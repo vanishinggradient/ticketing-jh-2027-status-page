@@ -37,5 +37,5 @@ jobs:
         run: |
           git config user.name "Ticket Monitor"
           git config user.email "ticketing@japanhabba.org"
-          git add status.json cron/status.md
+          git add status.json
           git diff --staged --quiet || (git commit -m "status: $(date -u +%Y-%m-%d_%H:%M)" && git push)

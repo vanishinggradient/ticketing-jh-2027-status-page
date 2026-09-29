@@ -357,41 +357,6 @@ def check_and_flip_phases(tickets: list) -> list[str]:
 
 # ── Status page ──────────────────────────────────────────────────────────────
 
-def generate_status(tickets: list, actions: list[str]) -> str:
-    now = datetime.now(IST).strftime("%Y-%m-%d %I:%M %p IST")
-    lines = [
-        "# Japan Habba 2027 Ticket Status",
-        "",
-        f"Last checked: {now}",
-        f"Phase flip: {'LIVE' if not TEST_MODE else 'TEST only'} | Writes: {'ON' if WRITES_ENABLED else 'OFF'}",
-        "",
-    ]
-
-    if actions:
-        lines.append("## Actions This Run")
-        lines.append("")
-        for a in actions:
-            lines.append(f"- {a}")
-        lines.append("")
-
-    lines.append("## All Tickets")
-    lines.append("")
-    lines.append("| Ticket | Price | Cap | Sold | Left | Hidden |")
-    lines.append("|--------|-------|-----|------|------|--------|")
-
-    for t in sorted(tickets, key=lambda x: x.get("ticket_order", 999)):
-        name = t.get("ticket_name", "")
-        price = t.get("ticket_price", "?")
-        cap = t.get("no_of_tickets", "?")
-        sold = t.get("tickets_sold", 0)
-        left = t.get("remaining_count", "?")
-        hidden = "Yes" if t.get("hidden_ticket") else "No"
-        lines.append(f"| {name} | {price} | {cap} | {sold} | {left} | {hidden} |")
-
-    lines.append("")
-    return "\n".join(lines)
-
-
 def generate_status_json(tickets: list) -> dict:
     """JSON for the public status page HTML.
     ONLY includes visible (non-hidden) tickets.
@@ -474,21 +439,16 @@ def main():
         if remaining == 0:
             log(f"SOLD OUT: {name}")
 
-    # Step 4: Generate status files
-    # status.json goes to repo root (where index.html reads it)
-    # status.md goes to cron/ (internal reference)
+    # Step 4: Generate status.json (repo root, where index.html reads it)
+    # No status.md in the public repo: it would expose hidden ticket data.
+    # Full ticket state lives in the private repo snapshots.
     repo_root = pathlib.Path(__file__).parent.parent
-    cron_dir = pathlib.Path(__file__).parent
-
-    status = generate_status(tickets, actions)
-    with open(cron_dir / "status.md", "w") as f:
-        f.write(status)
 
     status_json = generate_status_json(tickets)
     with open(repo_root / "status.json", "w") as f:
         json.dump(status_json, f, indent=2)
 
-    log("status.md + status.json updated")
+    log("status.json updated")
 
     # Step 5: Print full state
     print()
