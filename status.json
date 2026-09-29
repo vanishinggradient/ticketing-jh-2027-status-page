@@ -1,30 +1,16 @@
 {
-  "updated_at": "2026-09-29 04:59 PM IST",
+  "updated_at": "2026-09-29 08:49 PM IST",
   "tickets": [
     {
-      "name": "Exhibition + Concert Day 1: GA Seated",
-      "price": 2800,
-      "capacity": 300,
+      "name": "Exhibition Day 1: Early Bird",
+      "price": 499,
+      "capacity": 250,
       "sold": 0,
-      "remaining": 300
+      "remaining": 250
     },
     {
       "name": "Exhibition + Concert Day 1: GA Standing",
       "price": 1800,
-      "capacity": 300,
-      "sold": 0,
-      "remaining": 300
-    },
-    {
-      "name": "Exhibition + Concert Day 1: VIP Seated",
-      "price": 3500,
-      "capacity": 150,
-      "sold": 0,
-      "remaining": 150
-    },
-    {
-      "name": "Exhibition + Concert Day 2: GA Seated",
-      "price": 2800,
       "capacity": 300,
       "sold": 0,
       "remaining": 300
@@ -35,6 +21,41 @@
       "capacity": 300,
       "sold": 0,
       "remaining": 300
+    },
+    {
+      "name": "Exhibition Day 2: Early Bird",
+      "price": 499,
+      "capacity": 250,
+      "sold": 0,
+      "remaining": 250
+    },
+    {
+      "name": "Exhibition + Concert Day 1: GA Seated",
+      "price": 2800,
+      "capacity": 300,
+      "sold": 0,
+      "remaining": 300
+    },
+    {
+      "name": "Exhibition + Concert Day 2: GA Seated",
+      "price": 2800,
+      "capacity": 300,
+      "sold": 0,
+      "remaining": 300
+    },
+    {
+      "name": "Exhibition Both Days: Early Bird",
+      "price": 998,
+      "capacity": 250,
+      "sold": 0,
+      "remaining": 250
+    },
+    {
+      "name": "Exhibition + Concert Day 1: VIP Seated",
+      "price": 3500,
+      "capacity": 150,
+      "sold": 0,
+      "remaining": 150
     },
     {
       "name": "Exhibition + Concert Day 2: VIP Seated",
@@ -51,28 +72,7 @@
       "remaining": 5000
     },
     {
-      "name": "Exhibition Both Days: Early Bird",
-      "price": 998,
-      "capacity": 250,
-      "sold": 0,
-      "remaining": 250
-    },
-    {
-      "name": "Exhibition Day 1: Early Bird",
-      "price": 499,
-      "capacity": 250,
-      "sold": 0,
-      "remaining": 250
-    },
-    {
-      "name": "Exhibition Day 2: Early Bird",
-      "price": 499,
-      "capacity": 250,
-      "sold": 0,
-      "remaining": 250
-    },
-    {
-      "name": "Fan Club: 2-Day Exhibition + Concert",
+      "name": "Exhibition + Concert Both Days: Fan Club Seated",
       "price": 7000,
       "capacity": 150,
       "sold": 0,
