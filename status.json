@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-29 03:40 PM IST",
+  "updated_at": "2026-09-29 04:42 PM IST",
   "tickets": [
     {
       "name": "Exhibition + Concert Day 1: GA Seated",
@@ -77,6 +77,13 @@
       "capacity": 150,
       "sold": 0,
       "remaining": 150
+    },
+    {
+      "name": "TEST-EB",
+      "price": 20,
+      "capacity": 5,
+      "sold": 0,
+      "remaining": 5
     }
   ]
 }
