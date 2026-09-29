@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-29 10:07 PM IST",
+  "updated_at": "2026-09-29 10:18 PM IST",
   "tickets": [
     {
       "name": "Exhibition Day 1: Early Bird",
@@ -67,9 +67,9 @@
     {
       "name": "Exhibition Both Days: Children (Ages 3-10)",
       "price": 50,
-      "capacity": 4999,
+      "capacity": 5000,
       "sold": 0,
-      "remaining": 4999
+      "remaining": 5000
     },
     {
       "name": "Exhibition + Concert Both Days: Fan Club Seated",
