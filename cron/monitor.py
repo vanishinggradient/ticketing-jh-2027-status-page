@@ -15,11 +15,11 @@ Approved by: Nivi Pal
 ADR reference: ADR-058 (auto-phase activation on sellout)
 
 Env vars:
-  KONFHUB_EVENT_ID       — KonfHub event UUID (required)
-  KONFHUB_REFRESH_TOKEN  — Cognito refresh token for auth (required)
-  KONFHUB_TOKEN          — Bearer token (optional, auto-refreshed if missing)
-  ENABLE_PHASE_FLIP      — Set to "true" to allow write operations (default: false)
-  GITHUB_TOKEN           — Auto-provided by GitHub Actions
+  KONFHUB_EVENT_ID       : KonfHub event UUID (required)
+  KONFHUB_REFRESH_TOKEN  : Cognito refresh token for auth (required)
+  KONFHUB_TOKEN          : Bearer token (optional, auto-refreshed if missing)
+  ENABLE_PHASE_FLIP      : Set to "true" to allow write operations (default: false)
+  GITHUB_TOKEN           : Auto-provided by GitHub Actions
 """
 
 import json
