@@ -2,7 +2,7 @@ name: Monitor Tickets
 
 on:
   schedule:
-    - cron: '25 * * * *'  # Hourly at :00 UTC (:30 IST)
+    - cron: '0 * * * *'  # Hourly at :25 UTC (:55 IST)
   workflow_dispatch:
 
 concurrency:
