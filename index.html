@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Japan Habba 2027 — Ticket Availability</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 2rem 1rem;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+            color: #f8fafc;
+        }
+        .subtitle {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+        }
+        .updated {
+            color: #64748b;
+            font-size: 0.8rem;
+            margin-bottom: 1.5rem;
+        }
+        .section {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .section h2 {
+            font-size: 1.1rem;
+            color: #f1f5f9;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #334155;
+        }
+        .ticket-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #1e293b;
+        }
+        .ticket-row:last-child { border-bottom: none; }
+        .ticket-name {
+            font-size: 0.9rem;
+            color: #cbd5e1;
+            flex: 1;
+        }
+        .ticket-price {
+            color: #94a3b8;
+            font-size: 0.85rem;
+            width: 80px;
+            text-align: right;
+        }
+        .ticket-bar {
+            width: 120px;
+            margin: 0 1rem;
+        }
+        .bar-bg {
+            background: #334155;
+            border-radius: 4px;
+            height: 8px;
+            overflow: hidden;
+        }
+        .bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s;
+        }
+        .bar-fill.green { background: #22c55e; }
+        .bar-fill.yellow { background: #eab308; }
+        .bar-fill.red { background: #ef4444; }
+        .ticket-count {
+            font-size: 0.85rem;
+            font-weight: 600;
+            width: 100px;
+            text-align: right;
+        }
+        .count-green { color: #22c55e; }
+        .count-yellow { color: #eab308; }
+        .count-red { color: #ef4444; }
+        .count-gray { color: #64748b; }
+        .badge {
+            display: inline-block;
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .badge-hidden { background: #334155; color: #94a3b8; }
+        .badge-soldout { background: #7f1d1d; color: #fca5a5; }
+        .badge-live { background: #14532d; color: #86efac; }
+        .footer {
+            text-align: center;
+            color: #475569;
+            font-size: 0.75rem;
+            margin-top: 2rem;
+        }
+        .loading { text-align: center; padding: 3rem; color: #64748b; }
+        .error { color: #ef4444; text-align: center; padding: 2rem; }
+        @media (max-width: 600px) {
+            .ticket-bar { display: none; }
+            .ticket-price { width: 60px; font-size: 0.8rem; }
+            .ticket-count { width: 80px; font-size: 0.8rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Japan Habba 2027</h1>
+        <p class="subtitle">Ticket Availability — January 9-10, 2027, Chamara Vajra, Bengaluru</p>
+        <p class="updated" id="updated">Loading...</p>
+        <div id="content"><div class="loading">Fetching ticket data...</div></div>
+        <p class="footer">
+            Updates every hour. Prices include GST.
+            <br>Buy tickets at <a href="https://konfhub.com/japan-habba-2027-hidden" style="color:#64748b;">konfhub.com</a>
+        </p>
+    </div>
+
+    <script>
+        async function loadStatus() {
+            try {
+                const resp = await fetch('status.json?' + Date.now());
+                if (!resp.ok) throw new Error('No data yet');
+                const data = await resp.json();
+                render(data);
+            } catch (e) {
+                document.getElementById('content').innerHTML =
+                    '<div class="error">Status data not available yet. Check back after the first monitor run.</div>';
+            }
+        }
+
+        function render(data) {
+            document.getElementById('updated').textContent =
+                'Last updated: ' + data.updated_at;
+
+            const sections = {
+                'Japan Habba': { title: 'Exhibition (Japan Habba)', tickets: [] },
+                'Japan Habba Live': { title: 'Concert (Japan Habba Live)', tickets: [] },
+            };
+
+            for (const t of data.tickets) {
+                const name = t.name || '';
+                if (name.includes('Meet') && name.includes('Greet')) continue; // Skip hidden M&G
+                if (name.includes('Concert') || name.includes('Fan Club')) {
+                    sections['Japan Habba Live'].tickets.push(t);
+                } else {
+                    sections['Japan Habba'].tickets.push(t);
+                }
+            }
+
+            let html = '';
+            for (const [key, sec] of Object.entries(sections)) {
+                html += '<div class="section"><h2>' + sec.title + '</h2>';
+                for (const t of sec.tickets) {
+                    const pct = t.capacity > 0 ? Math.round(t.remaining / t.capacity * 100) : 0;
+                    let barClass = 'green', countClass = 'count-green';
+                    if (pct <= 25) { barClass = 'red'; countClass = 'count-red'; }
+                    else if (pct <= 50) { barClass = 'yellow'; countClass = 'count-yellow'; }
+
+                    let badge = '';
+                    if (t.hidden) {
+                        badge = '<span class="badge badge-hidden">Upcoming</span>';
+                        countClass = 'count-gray';
+                    } else if (t.remaining === 0) {
+                        badge = '<span class="badge badge-soldout">Sold Out</span>';
+                        countClass = 'count-red';
+                    }
+
+                    const displayName = t.name
+                        .replace('Exhibition Day 1: ', 'Day 1 ')
+                        .replace('Exhibition Day 2: ', 'Day 2 ')
+                        .replace('Exhibition Both Days: ', 'Both Days ')
+                        .replace('Exhibition + Concert Day 1: ', 'Day 1 ')
+                        .replace('Exhibition + Concert Day 2: ', 'Day 2 ')
+                        .replace('Fan Club: 2-Day Exhibition + Concert', 'Fan Club 2-Day');
+
+                    html += '<div class="ticket-row">';
+                    html += '<span class="ticket-name">' + displayName + ' ' + badge + '</span>';
+                    html += '<span class="ticket-price">₹' + t.price.toLocaleString('en-IN') + '</span>';
+                    html += '<span class="ticket-bar"><div class="bar-bg"><div class="bar-fill ' + barClass + '" style="width:' + pct + '%"></div></div></span>';
+                    if (t.hidden) {
+                        html += '<span class="ticket-count ' + countClass + '">—</span>';
+                    } else if (t.remaining === 0) {
+                        html += '<span class="ticket-count ' + countClass + '">Sold Out</span>';
+                    } else {
+                        html += '<span class="ticket-count ' + countClass + '">' + t.remaining + ' left</span>';
+                    }
+                    html += '</div>';
+                }
+                html += '</div>';
+            }
+
+            document.getElementById('content').innerHTML = html;
+        }
+
+        loadStatus();
+    </script>
+</body>
+</html>

@@ -1,0 +1,189 @@
+{
+  "updated_at": "2026-09-29 03:14 PM IST",
+  "tickets": [
+    {
+      "name": "Exhibition + Concert Day 1: GA Seated",
+      "price": 2800,
+      "capacity": 300,
+      "sold": 0,
+      "remaining": 300,
+      "hidden": false
+    },
+    {
+      "name": "Exhibition + Concert Day 1: GA Standing",
+      "price": 1800,
+      "capacity": 300,
+      "sold": 0,
+      "remaining": 300,
+      "hidden": false
+    },
+    {
+      "name": "Exhibition + Concert Day 1: VIP Seated",
+      "price": 3500,
+      "capacity": 150,
+      "sold": 0,
+      "remaining": 150,
+      "hidden": false
+    },
+    {
+      "name": "Exhibition + Concert Day 2: GA Seated",
+      "price": 2800,
+      "capacity": 300,
+      "sold": 0,
+      "remaining": 300,
+      "hidden": false
+    },
+    {
+      "name": "Exhibition + Concert Day 2: GA Standing",
+      "price": 1800,
+      "capacity": 300,
+      "sold": 0,
+      "remaining": 300,
+      "hidden": false
+    },
+    {
+      "name": "Exhibition + Concert Day 2: VIP Seated",
+      "price": 3500,
+      "capacity": 150,
+      "sold": 0,
+      "remaining": 150,
+      "hidden": false
+    },
+    {
+      "name": "Exhibition Both Days: Children (Ages 3-10)",
+      "price": 50,
+      "capacity": 5000,
+      "sold": 0,
+      "remaining": 5000,
+      "hidden": false
+    },
+    {
+      "name": "Exhibition Both Days: Early Bird",
+      "price": 998,
+      "capacity": 250,
+      "sold": 0,
+      "remaining": 250,
+      "hidden": false
+    },
+    {
+      "name": "Exhibition Both Days: Final Phase",
+      "price": 1998,
+      "capacity": 750,
+      "sold": 0,
+      "remaining": 750,
+      "hidden": true
+    },
+    {
+      "name": "Exhibition Both Days: Phase 1",
+      "price": 1198,
+      "capacity": 1250,
+      "sold": 0,
+      "remaining": 1250,
+      "hidden": true
+    },
+    {
+      "name": "Exhibition Both Days: Phase 2",
+      "price": 1498,
+      "capacity": 3000,
+      "sold": 0,
+      "remaining": 3000,
+      "hidden": true
+    },
+    {
+      "name": "Exhibition Both Days: Phase 3",
+      "price": 1698,
+      "capacity": 3750,
+      "sold": 0,
+      "remaining": 3750,
+      "hidden": true
+    },
+    {
+      "name": "Exhibition Day 1: Early Bird",
+      "price": 499,
+      "capacity": 250,
+      "sold": 0,
+      "remaining": 250,
+      "hidden": false
+    },
+    {
+      "name": "Exhibition Day 1: Final Phase",
+      "price": 999,
+      "capacity": 750,
+      "sold": 0,
+      "remaining": 750,
+      "hidden": true
+    },
+    {
+      "name": "Exhibition Day 1: Phase 1",
+      "price": 599,
+      "capacity": 1250,
+      "sold": 0,
+      "remaining": 1250,
+      "hidden": true
+    },
+    {
+      "name": "Exhibition Day 1: Phase 2",
+      "price": 749,
+      "capacity": 3000,
+      "sold": 0,
+      "remaining": 3000,
+      "hidden": true
+    },
+    {
+      "name": "Exhibition Day 1: Phase 3",
+      "price": 849,
+      "capacity": 3750,
+      "sold": 0,
+      "remaining": 3750,
+      "hidden": true
+    },
+    {
+      "name": "Exhibition Day 2: Early Bird",
+      "price": 499,
+      "capacity": 250,
+      "sold": 0,
+      "remaining": 250,
+      "hidden": false
+    },
+    {
+      "name": "Exhibition Day 2: Final Phase",
+      "price": 999,
+      "capacity": 750,
+      "sold": 0,
+      "remaining": 750,
+      "hidden": true
+    },
+    {
+      "name": "Exhibition Day 2: Phase 1",
+      "price": 599,
+      "capacity": 1250,
+      "sold": 0,
+      "remaining": 1250,
+      "hidden": true
+    },
+    {
+      "name": "Exhibition Day 2: Phase 2",
+      "price": 749,
+      "capacity": 3000,
+      "sold": 0,
+      "remaining": 3000,
+      "hidden": true
+    },
+    {
+      "name": "Exhibition Day 2: Phase 3",
+      "price": 849,
+      "capacity": 3750,
+      "sold": 0,
+      "remaining": 3750,
+      "hidden": true
+    },
+    {
+      "name": "Fan Club: 2-Day Exhibition + Concert",
+      "price": 7000,
+      "capacity": 150,
+      "sold": 0,
+      "remaining": 150,
+      "hidden": false
+    }
+  ]
+}
