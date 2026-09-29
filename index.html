@@ -164,6 +164,7 @@
             for (const [key, sec] of Object.entries(sections)) {
                 html += '<div class="section"><h2>' + sec.title + '</h2>';
                 for (const t of sec.tickets) {
+                    if (t.hidden) continue; // Don't show hidden tickets to public
                     const pct = t.capacity > 0 ? Math.round(t.remaining / t.capacity * 100) : 0;
                     let barClass = 'green', countClass = 'count-green';
                     if (pct <= 25) { barClass = 'red'; countClass = 'count-red'; }
