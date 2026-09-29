@@ -11,7 +11,7 @@ SAFETY RULES (from ADR-042, ADR-057):
   5. Every write is logged with ticket ID, name, and action.
   6. Dry-run mode prints what WOULD happen without doing it.
 
-Approved by: Nivi Pal (WhatsApp, Sep 29 2026, "O" + "Nice")
+Approved by: Nivi Pal
 ADR reference: ADR-058 (auto-phase activation on sellout)
 
 Env vars:
