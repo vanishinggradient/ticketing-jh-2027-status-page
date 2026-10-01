@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-01 07:01 PM IST",
+  "updated_at": "2026-10-01 07:09 PM IST",
   "tickets": [
     {
       "name": "Exhibition Day 1: Early Bird",
@@ -26,8 +26,8 @@
       "name": "Exhibition Day 2: Early Bird",
       "price": 499,
       "capacity": 250,
-      "sold": 154,
-      "remaining": 8
+      "sold": 158,
+      "remaining": 4
     },
     {
       "name": "Exhibition + Concert Day 1: GA Seated",
