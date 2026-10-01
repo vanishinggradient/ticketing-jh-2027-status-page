@@ -1,82 +1,103 @@
 {
-  "updated_at": "2026-10-01 03:37 PM IST",
+  "updated_at": "2026-10-01 04:37 PM IST",
   "tickets": [
     {
       "name": "Exhibition Day 1: Early Bird",
       "price": 499,
       "capacity": 250,
-      "sold": 16,
-      "remaining": 214
+      "sold": 96,
+      "remaining": 92
     },
     {
       "name": "Exhibition + Concert Day 1: GA Standing",
       "price": 1800,
       "capacity": 300,
-      "sold": 2,
-      "remaining": 298
+      "sold": 17,
+      "remaining": 283
     },
     {
       "name": "Exhibition + Concert Day 2: GA Standing",
       "price": 1800,
       "capacity": 300,
-      "sold": 3,
-      "remaining": 297
+      "sold": 8,
+      "remaining": 292
     },
     {
       "name": "Exhibition Day 2: Early Bird",
       "price": 499,
       "capacity": 250,
-      "sold": 6,
-      "remaining": 224
+      "sold": 54,
+      "remaining": 134
     },
     {
       "name": "Exhibition + Concert Day 1: GA Seated",
       "price": 2800,
       "capacity": 300,
-      "sold": 0,
-      "remaining": 300
+      "sold": 7,
+      "remaining": 293
     },
     {
       "name": "Exhibition + Concert Day 2: GA Seated",
       "price": 2800,
       "capacity": 300,
-      "sold": 0,
-      "remaining": 300
+      "sold": 11,
+      "remaining": 289
     },
     {
       "name": "Exhibition Both Days: Early Bird",
       "price": 998,
       "capacity": 250,
-      "sold": 20,
-      "remaining": 214
+      "sold": 62,
+      "remaining": 92
     },
     {
       "name": "Exhibition + Concert Day 1: VIP Seated",
       "price": 3500,
       "capacity": 150,
-      "sold": 0,
-      "remaining": 150
+      "sold": 3,
+      "remaining": 147
     },
     {
       "name": "Exhibition + Concert Day 2: VIP Seated",
       "price": 3500,
       "capacity": 150,
-      "sold": 1,
-      "remaining": 149
+      "sold": 5,
+      "remaining": 145
     },
     {
       "name": "Exhibition Both Days: Children (Ages 3-10)",
       "price": 50,
       "capacity": 5000,
-      "sold": 2,
-      "remaining": 4998
+      "sold": 4,
+      "remaining": 4996
+    },
+    {
+      "name": "Exhibition Day 1: Phase 1",
+      "price": 599,
+      "capacity": 1250,
+      "sold": 0,
+      "remaining": 1250
+    },
+    {
+      "name": "Exhibition Day 2: Phase 1",
+      "price": 599,
+      "capacity": 1250,
+      "sold": 0,
+      "remaining": 1250
+    },
+    {
+      "name": "Exhibition Both Days: Phase 1",
+      "price": 1198,
+      "capacity": 1250,
+      "sold": 0,
+      "remaining": 1250
     },
     {
       "name": "Exhibition + Concert Both Days: Fan Club Seated",
       "price": 7000,
       "capacity": 150,
-      "sold": 1,
-      "remaining": 149
+      "sold": 15,
+      "remaining": 135
     }
   ]
 }
