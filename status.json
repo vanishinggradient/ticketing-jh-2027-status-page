@@ -1,12 +1,12 @@
 {
-  "updated_at": "2026-10-01 05:11 PM IST",
+  "updated_at": "2026-10-01 05:21 PM IST",
   "tickets": [
     {
       "name": "Exhibition Day 1: Early Bird",
       "price": 499,
       "capacity": 250,
-      "sold": 136,
-      "remaining": 35
+      "sold": 145,
+      "remaining": 25
     },
     {
       "name": "Exhibition + Concert Day 1: GA Standing",
@@ -19,15 +19,15 @@
       "name": "Exhibition + Concert Day 2: GA Standing",
       "price": 1800,
       "capacity": 300,
-      "sold": 14,
-      "remaining": 286
+      "sold": 15,
+      "remaining": 285
     },
     {
       "name": "Exhibition Day 2: Early Bird",
       "price": 499,
       "capacity": 250,
-      "sold": 65,
-      "remaining": 106
+      "sold": 69,
+      "remaining": 101
     },
     {
       "name": "Exhibition + Concert Day 1: GA Seated",
@@ -47,8 +47,8 @@
       "name": "Exhibition Both Days: Early Bird",
       "price": 998,
       "capacity": 250,
-      "sold": 79,
-      "remaining": 35
+      "sold": 80,
+      "remaining": 25
     },
     {
       "name": "Exhibition + Concert Day 1: VIP Seated",
@@ -61,8 +61,8 @@
       "name": "Exhibition + Concert Day 2: VIP Seated",
       "price": 3500,
       "capacity": 150,
-      "sold": 6,
-      "remaining": 144
+      "sold": 8,
+      "remaining": 142
     },
     {
       "name": "Exhibition Both Days: Children (Ages 3-10)",
@@ -96,8 +96,8 @@
       "name": "Exhibition + Concert Both Days: Fan Club Seated",
       "price": 7000,
       "capacity": 150,
-      "sold": 20,
-      "remaining": 130
+      "sold": 22,
+      "remaining": 128
     }
   ]
 }
