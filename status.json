@@ -1,33 +1,33 @@
 {
-  "updated_at": "2026-10-01 04:37 PM IST",
+  "updated_at": "2026-10-01 04:59 PM IST",
   "tickets": [
     {
       "name": "Exhibition Day 1: Early Bird",
       "price": 499,
       "capacity": 250,
-      "sold": 96,
-      "remaining": 92
+      "sold": 126,
+      "remaining": 54
     },
     {
       "name": "Exhibition + Concert Day 1: GA Standing",
       "price": 1800,
       "capacity": 300,
-      "sold": 17,
-      "remaining": 283
+      "sold": 22,
+      "remaining": 278
     },
     {
       "name": "Exhibition + Concert Day 2: GA Standing",
       "price": 1800,
       "capacity": 300,
-      "sold": 8,
-      "remaining": 292
+      "sold": 12,
+      "remaining": 288
     },
     {
       "name": "Exhibition Day 2: Early Bird",
       "price": 499,
       "capacity": 250,
-      "sold": 54,
-      "remaining": 134
+      "sold": 62,
+      "remaining": 118
     },
     {
       "name": "Exhibition + Concert Day 1: GA Seated",
@@ -40,15 +40,15 @@
       "name": "Exhibition + Concert Day 2: GA Seated",
       "price": 2800,
       "capacity": 300,
-      "sold": 11,
-      "remaining": 289
+      "sold": 17,
+      "remaining": 283
     },
     {
       "name": "Exhibition Both Days: Early Bird",
       "price": 998,
       "capacity": 250,
-      "sold": 62,
-      "remaining": 92
+      "sold": 70,
+      "remaining": 54
     },
     {
       "name": "Exhibition + Concert Day 1: VIP Seated",
@@ -61,15 +61,15 @@
       "name": "Exhibition + Concert Day 2: VIP Seated",
       "price": 3500,
       "capacity": 150,
-      "sold": 5,
-      "remaining": 145
+      "sold": 6,
+      "remaining": 144
     },
     {
       "name": "Exhibition Both Days: Children (Ages 3-10)",
       "price": 50,
       "capacity": 5000,
-      "sold": 4,
-      "remaining": 4996
+      "sold": 5,
+      "remaining": 4995
     },
     {
       "name": "Exhibition Day 1: Phase 1",
@@ -96,8 +96,8 @@
       "name": "Exhibition + Concert Both Days: Fan Club Seated",
       "price": 7000,
       "capacity": 150,
-      "sold": 15,
-      "remaining": 135
+      "sold": 20,
+      "remaining": 130
     }
   ]
 }
