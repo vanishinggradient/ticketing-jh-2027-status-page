@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-02 01:40 PM IST",
+  "updated_at": "2026-10-02 01:50 PM IST",
   "tickets": [
     {
       "name": "Exhibition Day 1: Phase 1",
@@ -54,8 +54,8 @@
       "name": "Exhibition + Concert Day 1: VIP Seated",
       "price": 3500,
       "capacity": 150,
-      "sold": 3,
-      "remaining": 147
+      "sold": 4,
+      "remaining": 146
     },
     {
       "name": "Exhibition + Concert Day 2: VIP Seated",
