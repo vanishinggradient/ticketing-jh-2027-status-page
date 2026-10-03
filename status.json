@@ -1,12 +1,12 @@
 {
-  "updated_at": "2026-10-03 06:10 PM IST",
+  "updated_at": "2026-10-03 06:21 PM IST",
   "tickets": [
     {
       "name": "Exhibition Day 1: Phase 1",
       "price": 599,
       "capacity": 1250,
-      "sold": 171,
-      "remaining": 1003
+      "sold": 172,
+      "remaining": 1002
     },
     {
       "name": "Exhibition + Concert Day 1: GA Standing",
@@ -48,7 +48,7 @@
       "price": 1198,
       "capacity": 1250,
       "sold": 76,
-      "remaining": 1003
+      "remaining": 1002
     },
     {
       "name": "Exhibition + Concert Day 1: VIP Seated",
