@@ -33,12 +33,12 @@ jobs:
           ENABLE_PHASE_FLIP: ${{ secrets.ENABLE_PHASE_FLIP }}
           MONITOR_MODE: ${{ secrets.MONITOR_MODE }}
 
-      - name: Generate comparison report
-        run: python cron/generate_report.py
+      # - name: Generate comparison report
+      #   run: python cron/generate_report.py
 
       - name: Commit status
         run: |
           git config user.name "Ticket Monitor"
           git config user.email "ticketing@japanhabba.org"
-          git add status.json history.json comparison.xlsx
+          git add status.json history.json
           git diff --staged --quiet || (git commit -m "status: $(date -u +%Y-%m-%d_%H:%M)" && git push)
