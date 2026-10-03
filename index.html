@@ -101,19 +101,36 @@
         .error { color: #BE185D; text-align: center; padding: 2rem; }
         .empty-note { color: #9ca3af; font-size: 0.82rem; padding: 1rem 1.25rem; text-align: center; }
 
+        .summary-bar {
+            background: rgba(255,255,255,0.12);
+            border-radius: 8px;
+            display: inline-flex;
+            gap: 1.5rem;
+            padding: 0.5rem 1.25rem;
+            margin-top: 0.9rem;
+            font-size: 0.88rem;
+        }
+        .summary-stat { color: white; }
+        .summary-stat strong { font-size: 1.05rem; font-weight: 800; }
+        .summary-stat span { color: #c7d2fe; font-size: 0.8rem; margin-left: 0.25rem; }
+
         @media (max-width: 600px) {
             .ticket-bar { display: none; }
             .ticket-price { width: 55px; font-size: 0.78rem; }
             .ticket-count { width: 70px; font-size: 0.78rem; }
             .header h1 { font-size: 1.4rem; }
+            .summary-bar { gap: 1rem; padding: 0.4rem 1rem; }
         }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>Japan Habba 2027</h1>
-        <p>Ticket Availability</p>
-        <p>Chamara Vajra, Bengaluru</p>
+        <p>Ticket Availability &mdash; Chamara Vajra, Bengaluru</p>
+        <div class="summary-bar" id="summary-bar" style="display:none">
+            <div class="summary-stat"><strong id="stat-sold">—</strong><span>sold</span></div>
+            <div class="summary-stat"><strong id="stat-days">—</strong><span>days to go</span></div>
+        </div>
     </div>
 
     <div class="container">
@@ -123,7 +140,9 @@
 
     <div class="footer">
         Updates every 10 minutes. Prices include GST.<br>
-        <a href="https://konfhub.com/japan-habba-2027-hidden">Buy tickets on KonfHub</a>
+        <a href="https://konfhub.com/japan-habba-2027">Buy tickets on KonfHub</a>
+        &nbsp;&middot;&nbsp;
+        <a href="comparison.xlsx" download>Download pace report (.xlsx)</a>
     </div>
 
     <script>
@@ -140,6 +159,13 @@
 
         function render(data) {
             document.getElementById('updated').textContent = 'Last updated: ' + data.updated_at;
+
+            const totalSold = (data.tickets || []).reduce((s, t) => s + (t.sold || 0), 0);
+            const eventDate = new Date('2027-01-09T00:00:00+05:30');
+            const daysLeft = Math.max(0, Math.ceil((eventDate - new Date()) / 86400000));
+            document.getElementById('stat-sold').textContent = totalSold.toLocaleString('en-IN');
+            document.getElementById('stat-days').textContent = daysLeft;
+            document.getElementById('summary-bar').style.display = 'inline-flex';
 
             const sections = {
                 'exhibition': { title: 'Exhibition (Japan Habba)', type: 'exhibition', tickets: [] },

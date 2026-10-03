@@ -20,7 +20,7 @@ from openpyxl.styles import Font, PatternFill, Alignment
 
 EVENT_DATE = date(2027, 1, 9)
 IST = timezone(timedelta(hours=5, minutes=30))
-REPO_ROOT = pathlib.Path(__file__).parent.parent
+REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 # JH 2026 historical data from Nivi's spreadsheet.
 # Tuple: (days_to_jan9, cumulative_sold, date_label, note)
