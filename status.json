@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-03 08:11 PM IST",
+  "updated_at": "2026-10-03 08:20 PM IST",
   "tickets": [
     {
       "name": "Exhibition Day 1: Phase 1",
@@ -61,8 +61,8 @@
       "name": "Exhibition + Concert Day 2: VIP Seated",
       "price": 3500,
       "capacity": 150,
-      "sold": 12,
-      "remaining": 138
+      "sold": 13,
+      "remaining": 137
     },
     {
       "name": "Exhibition Both Days: Children (Ages 3-10)",
