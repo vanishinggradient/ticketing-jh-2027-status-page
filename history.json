@@ -1,5 +1,20 @@
 [
   {
+    "date": "2026-10-01",
+    "days_to_event": 100,
+    "total_sold": 814
+  },
+  {
+    "date": "2026-10-02",
+    "days_to_event": 99,
+    "total_sold": 952
+  },
+  {
+    "date": "2026-10-03",
+    "days_to_event": 98,
+    "total_sold": 1027
+  },
+  {
     "date": "2026-10-04",
     "days_to_event": 97,
     "total_sold": 1027
