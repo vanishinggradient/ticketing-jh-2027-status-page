@@ -99,6 +99,19 @@ def get_last_shortcode(events: list) -> str | None:
     return events[-1].get("shortcode")
 
 
+def _make_loader() -> instaloader.Instaloader:
+    return instaloader.Instaloader(
+        quiet=True,
+        download_pictures=False,
+        download_videos=False,
+        download_video_thumbnails=False,
+        download_geotags=False,
+        download_comments=False,
+        save_metadata=False,
+        post_metadata_txt_pattern="",
+    )
+
+
 def load_session(session_b64: str) -> instaloader.Instaloader | None:
     try:
         session_bytes = base64.b64decode(session_b64)
@@ -111,17 +124,7 @@ def load_session(session_b64: str) -> instaloader.Instaloader | None:
     tmp.flush()
     tmp.close()
 
-    loader = instaloader.Instaloader(
-        quiet=True,
-        download_pictures=False,
-        download_videos=False,
-        download_video_thumbnails=False,
-        download_geotags=False,
-        download_comments=False,
-        save_metadata=False,
-        post_metadata_txt_pattern="",
-    )
-
+    loader = _make_loader()
     try:
         # Username stored in the session — instaloader needs it to load.
         # The session file was saved as "vanishinggradient".
@@ -130,6 +133,21 @@ def load_session(session_b64: str) -> instaloader.Instaloader | None:
         return loader
     except Exception as e:
         log(f"Session load failed: {e}")
+        return None
+
+
+def login_with_credentials(username: str, password: str) -> instaloader.Instaloader | None:
+    """Fallback: password login when session is absent or stale."""
+    if not username or not password:
+        log("INSTAGRAM_USERNAME / INSTAGRAM_PASSWORD not set — cannot fall back")
+        return None
+    loader = _make_loader()
+    try:
+        loader.login(username, password)
+        log(f"Logged in as {username} via password.")
+        return loader
+    except Exception as e:
+        log(f"Password login failed: {e}")
         return None
 
 
@@ -159,16 +177,24 @@ def fetch_new_posts(
 
 def main():
     session_b64 = os.environ.get("INSTAGRAM_SESSION_B64", "")
-    if not session_b64:
-        log("INSTAGRAM_SESSION_B64 not set — skipping")
-        sys.exit(0)
+    username = os.environ.get("INSTAGRAM_USERNAME", "")
+    password = os.environ.get("INSTAGRAM_PASSWORD", "")
 
     events = load_events()
     since = get_last_shortcode(events)
     log(f"Last logged shortcode: {since or 'none (first run)'}")
 
-    loader = load_session(session_b64)
+    loader = None
+    if session_b64:
+        loader = load_session(session_b64)
+    else:
+        log("INSTAGRAM_SESSION_B64 not set — trying password fallback")
+
     if loader is None:
+        loader = login_with_credentials(username, password)
+
+    if loader is None:
+        log("All auth methods failed — skipping")
         sys.exit(0)
 
     new_posts = fetch_new_posts(loader, since)
