@@ -130,13 +130,14 @@ def rag_label(pct: float) -> str:
 
 # ── Sheet builders ────────────────────────────────────────────────────────────
 
-def build_pace_chart_sheet(wb: Workbook, history: list):
+def build_pace_chart_sheet(wb: Workbook, history: list, events: list):
     """
     Sheet 1: Pace Chart
     Unified day-by-day table (D-100 to D+2), 3 series:
       - JH 2026 (navy)
       - JH 2027 (orange, from history.json)
       - Target pace line (red dashed)
+    Column 5: Event annotations from events.json (purple italic).
     Embedded LineChart.
     """
     ws = wb.active
@@ -144,12 +145,26 @@ def build_pace_chart_sheet(wb: Workbook, history: list):
     ws.row_dimensions[1].height = 18
 
     for col, title in enumerate(
-        ["Days to Jan 9", "JH 2026 (sold)", "JH 2027 (sold)", "Target (pace)"], 1
+        ["Days to Jan 9", "JH 2026 (sold)", "JH 2027 (sold)", "Target (pace)", "Event (JH 2027)"], 1
     ):
         hdr_cell(ws, 1, col, title)
 
     jh2026_lookup = {d: s for d, s, _, _ in JH_2026}
     jh2027_lookup = {e["days_to_event"]: e["total_sold"] for e in history}
+
+    # Build event lookup: days_to_event → label (from events.json)
+    event_lookup: dict[int, str] = {}
+    for ev in events:
+        try:
+            ev_date = date.fromisoformat(ev["date"])
+            dte = (EVENT_DATE - ev_date).days
+            label = ev.get("label") or ev.get("category", "")
+            if dte not in event_lookup:
+                event_lookup[dte] = label
+            else:
+                event_lookup[dte] += f", {label}"
+        except (ValueError, KeyError):
+            pass
 
     # One row per day from D-100 down to D+2
     all_days = list(range(100, -3, -1))
@@ -162,8 +177,11 @@ def build_pace_chart_sheet(wb: Workbook, history: list):
         t = interpolate_target(d)
         if t is not None:
             ws.cell(row=i, column=4, value=t).font = Font(size=9, color="991B1B")
+        if d in event_lookup:
+            c = ws.cell(row=i, column=5, value=event_lookup[d])
+            c.font = Font(size=9, italic=True, color="7C3AED")
 
-    set_col_widths(ws, [("A", 14), ("B", 16), ("C", 16), ("D", 16)])
+    set_col_widths(ws, [("A", 14), ("B", 16), ("C", 16), ("D", 16), ("E", 32)])
 
     n = len(all_days)
 
@@ -295,6 +313,39 @@ def build_breakdown_sheet(wb: Workbook, status: dict):
     set_col_widths(ws, [("A", 42), ("B", 12), ("C", 10), ("D", 10), ("E", 12), ("F", 10)])
 
 
+def build_events_sheet(wb: Workbook, events: list):
+    """
+    Sheet 5: Events Log
+    All @japanhabba Instagram announcements with their sales context.
+    Populated from events.json.
+    """
+    ws = wb.create_sheet("Events Log")
+    ws.row_dimensions[1].height = 18
+
+    for col, h in enumerate(
+        ["Date", "Days to Event", "Category", "Label", "Instagram URL"], 1
+    ):
+        hdr_cell(ws, 1, col, h, bg="7C3AED")
+
+    today = today_ist()
+    for row, ev in enumerate(sorted(events, key=lambda x: x.get("date", "")), 2):
+        try:
+            ev_date = date.fromisoformat(ev["date"])
+            dte = (EVENT_DATE - ev_date).days
+        except (ValueError, KeyError):
+            ev_date = None
+            dte = ""
+
+        ws.cell(row=row, column=1, value=ev.get("date", "")).font = Font(size=10)
+        ws.cell(row=row, column=2, value=dte).font = Font(size=10, color="6B7280")
+        ws.cell(row=row, column=3, value=ev.get("category", "")).font = Font(size=10, color="7C3AED", bold=True)
+        ws.cell(row=row, column=4, value=ev.get("label", "")).font = Font(size=10, italic=True)
+        url_cell = ws.cell(row=row, column=5, value=ev.get("url", ""))
+        url_cell.font = Font(size=10, color="2563EB")
+
+    set_col_widths(ws, [("A", 14), ("B", 14), ("C", 16), ("D", 32), ("E", 48)])
+
+
 def build_jh2026_raw_sheet(wb: Workbook):
     """
     Sheet 4: JH 2026 Raw
@@ -359,12 +410,17 @@ def main():
     save_json(REPO_ROOT / "history.json", history)
     print(f"  History updated: {len(history)} entries")
 
+    # Load events.json (announcements from Instagram)
+    events = load_json(REPO_ROOT / "events.json", [])
+    print(f"  Events loaded: {len(events)} entries")
+
     # Build workbook
     wb = Workbook()
-    build_pace_chart_sheet(wb, history)
+    build_pace_chart_sheet(wb, history, events)
     build_targets_sheet(wb, history)
     build_breakdown_sheet(wb, status)
     build_jh2026_raw_sheet(wb)
+    build_events_sheet(wb, events)
 
     out = REPO_ROOT / "comparison.xlsx"
     wb.save(out)
