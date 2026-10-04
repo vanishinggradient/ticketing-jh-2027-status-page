@@ -145,11 +145,12 @@ def build_pace_chart_sheet(wb: Workbook, history: list, events: list):
     ws.row_dimensions[1].height = 18
 
     for col, title in enumerate(
-        ["Days to Jan 9", "JH 2026 (sold)", "JH 2027 (sold)", "Target (pace)", "Event (JH 2027)"], 1
+        ["Days to Jan 9", "JH 2026 (sold)", "JH 2027 (sold)", "Target (pace)", "Event (JH 2027)", "Event (JH 2026)"], 1
     ):
         hdr_cell(ws, 1, col, title)
 
     jh2026_lookup = {d: s for d, s, _, _ in JH_2026}
+    jh2026_notes = {d: note for d, _, _, note in JH_2026 if note}
     jh2027_lookup = {e["days_to_event"]: e["total_sold"] for e in history}
 
     # Build event lookup: days_to_event → label (from events.json)
@@ -180,8 +181,11 @@ def build_pace_chart_sheet(wb: Workbook, history: list, events: list):
         if d in event_lookup:
             c = ws.cell(row=i, column=5, value=event_lookup[d])
             c.font = Font(size=9, italic=True, color="7C3AED")
+        if d in jh2026_notes:
+            c = ws.cell(row=i, column=6, value=jh2026_notes[d])
+            c.font = Font(size=9, italic=True, color="1E3A5F")
 
-    set_col_widths(ws, [("A", 14), ("B", 16), ("C", 16), ("D", 16), ("E", 32)])
+    set_col_widths(ws, [("A", 14), ("B", 16), ("C", 16), ("D", 16), ("E", 32), ("F", 32)])
 
     n = len(all_days)
 

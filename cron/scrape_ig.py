@@ -201,9 +201,16 @@ def main():
     new_posts = fetch_new_posts(loader, since)
     log(f"New posts since last check: {len(new_posts)}")
 
+    # Dedup guard: never re-add a shortcode already in events.json.
+    # Protects against placeholder shortcodes and re-runs on the same posts.
+    existing_shortcodes = {ev.get("shortcode") for ev in events}
+
     # Posts come newest-first from Instagram. Reverse so we append oldest-first.
     added = 0
     for post in reversed(new_posts):
+        if post["shortcode"] in existing_shortcodes:
+            log(f"  Skip {post['shortcode']}: already logged")
+            continue
         category = classify(post["caption"])
         if category is None:
             log(f"  Skip {post['shortcode']}: no classifier match")
