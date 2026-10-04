@@ -109,6 +109,7 @@ def _make_loader() -> instaloader.Instaloader:
         download_comments=False,
         save_metadata=False,
         post_metadata_txt_pattern="",
+        max_connection_attempts=1,  # fail fast — no infinite retry loops in CI
     )
 
 
