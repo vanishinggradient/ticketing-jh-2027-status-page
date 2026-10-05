@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-05 04:47 PM IST",
+  "updated_at": "2026-10-05 05:47 PM IST",
   "tickets": [
     {
       "name": "Exhibition Day 1: Phase 1",
@@ -19,8 +19,8 @@
       "name": "Exhibition + Concert Day 2: GA Standing",
       "price": 1800,
       "capacity": 300,
-      "sold": 81,
-      "remaining": 219
+      "sold": 82,
+      "remaining": 218
     },
     {
       "name": "Exhibition Day 2: Phase 1",
