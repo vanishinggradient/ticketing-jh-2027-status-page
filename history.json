@@ -38,5 +38,10 @@
     "date": "2026-10-08",
     "days_to_event": 93,
     "total_sold": 1172
+  },
+  {
+    "date": "2026-10-09",
+    "days_to_event": 92,
+    "total_sold": 1172
   }
 ]
