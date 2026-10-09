@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-09 11:47 AM IST",
+  "updated_at": "2026-10-09 12:47 PM IST",
   "tickets": [
     {
       "name": "Exhibition Day 1: Phase 1",
@@ -68,8 +68,8 @@
       "name": "Exhibition Both Days: Children (Ages 3-10)",
       "price": 50,
       "capacity": 5000,
-      "sold": 28,
-      "remaining": 4972
+      "sold": 30,
+      "remaining": 4970
     },
     {
       "name": "Exhibition Day 1: Phase 2",
