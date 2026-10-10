@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-10 06:47 PM IST",
+  "updated_at": "2026-10-10 07:47 PM IST",
   "tickets": [
     {
       "name": "Exhibition Day 1: Phase 1",
@@ -117,8 +117,8 @@
       "name": "Exhibition + Concert Both Days: Fan Club Seated",
       "price": 7000,
       "capacity": 150,
-      "sold": 40,
-      "remaining": 110
+      "sold": 41,
+      "remaining": 109
     }
   ]
 }
