@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex,nofollow">
+    <title>Japan Habba 2027 - Ticket Availability</title>
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background: #fafafa; color: #1f2937; min-height: 100vh; }
+
+        .header {
+            background: linear-gradient(135deg, #312E81 0%, #1E1B4B 50%, #9D174D 100%);
+            color: white;
+            padding: 2.5rem 1rem 2rem;
+            text-align: center;
+        }
+        .header h1 { font-size: 1.8rem; font-weight: 800; letter-spacing: -0.02em; }
+        .header p { color: #c7d2fe; font-size: 0.9rem; margin-top: 0.25rem; }
+        .header .date { color: #fbbf24; font-weight: 600; }
+
+        .container { max-width: 800px; margin: -1rem auto 2rem; padding: 0 1rem; }
+
+        .updated {
+            text-align: center;
+            color: #6b7280;
+            font-size: 0.75rem;
+            margin-bottom: 1.5rem;
+            padding-top: 1.5rem;
+        }
+
+        .section {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            margin-bottom: 1.25rem;
+            overflow: hidden;
+        }
+        .section-header {
+            padding: 1rem 1.25rem;
+            font-weight: 700;
+            font-size: 0.95rem;
+            border-bottom: 1px solid #f3f4f6;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .section-header.exhibition { color: #312E81; }
+        .section-header.concert { color: #9D174D; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; }
+        .dot.exhibition { background: #312E81; }
+        .dot.concert { background: #EC4899; }
+
+        .ticket-row {
+            display: flex;
+            align-items: center;
+            padding: 0.85rem 1.25rem;
+            border-bottom: 1px solid #f9fafb;
+            transition: background 0.15s;
+        }
+        .ticket-row:last-child { border-bottom: none; }
+        .ticket-row:hover { background: #fefce8; }
+
+        .ticket-name { flex: 1; font-size: 0.88rem; color: #374151; font-weight: 500; }
+        .ticket-price {
+            color: #6b7280;
+            font-size: 0.82rem;
+            width: 70px;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+        .ticket-bar { width: 100px; margin: 0 0.75rem; }
+        .bar-bg { background: #FDE68A; border-radius: 4px; height: 8px; overflow: hidden; }
+        .bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
+        .bar-fill.high { background: #312E81; }
+        .bar-fill.mid { background: #F97316; }
+        .bar-fill.low { background: #EC4899; }
+
+        .ticket-count {
+            font-size: 0.82rem;
+            font-weight: 600;
+            width: 85px;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+        .count-high { color: #312E81; }
+        .count-mid { color: #C2410C; }
+        .count-low { color: #BE185D; }
+        .count-out { color: #9ca3af; }
+
+        .footer {
+            text-align: center;
+            color: #9ca3af;
+            font-size: 0.7rem;
+            padding: 1rem;
+        }
+        .footer a { color: #6366f1; text-decoration: none; }
+        .footer a:hover { text-decoration: underline; }
+
+        .loading { text-align: center; padding: 3rem; color: #9ca3af; }
+        .error { color: #BE185D; text-align: center; padding: 2rem; }
+        .empty-note { color: #9ca3af; font-size: 0.82rem; padding: 1rem 1.25rem; text-align: center; }
+
+        .summary-bar {
+            background: rgba(255,255,255,0.12);
+            border-radius: 8px;
+            display: inline-flex;
+            gap: 1.5rem;
+            padding: 0.5rem 1.25rem;
+            margin-top: 0.9rem;
+            font-size: 0.88rem;
+        }
+        .summary-stat { color: white; }
+        .summary-stat strong { font-size: 1.05rem; font-weight: 800; }
+        .summary-stat span { color: #c7d2fe; font-size: 0.8rem; margin-left: 0.25rem; }
+
+        .login {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            max-width: 360px;
+            margin: 0 auto;
+            padding: 1.5rem 1.25rem;
+        }
+        .login label { display: block; font-size: 0.8rem; font-weight: 600; color: #374151; margin-bottom: 0.3rem; }
+        .login input {
+            width: 100%;
+            padding: 0.6rem 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            margin-bottom: 1rem;
+        }
+        .login input:focus { outline: 2px solid #6366f1; border-color: transparent; }
+        .btn {
+            background: #312E81;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0.65rem 1rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .login .btn { width: 100%; }
+        .btn:hover { background: #1E1B4B; }
+        .btn:disabled { opacity: 0.6; cursor: wait; }
+        .login-error { color: #BE185D; font-size: 0.82rem; margin-top: 0.75rem; text-align: center; min-height: 1em; }
+        .download { text-align: center; margin-bottom: 1.25rem; }
+
+        @media (max-width: 600px) {
+            .ticket-bar { display: none; }
+            .ticket-price { width: 55px; font-size: 0.78rem; }
+            .ticket-count { width: 70px; font-size: 0.78rem; }
+            .header h1 { font-size: 1.4rem; }
+            .summary-bar { gap: 1rem; padding: 0.4rem 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Japan Habba 2027</h1>
+        <p>Ticket Availability - Chamara Vajra, Bengaluru</p>
+        <div class="summary-bar" id="summary-bar" style="display:none">
+            <div class="summary-stat"><strong id="stat-sold">—</strong><span>sold</span></div>
+            <div class="summary-stat"><strong id="stat-days">—</strong><span>days to go</span></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <p class="updated" id="updated">Sign in to view ticket data</p>
+        <form class="login" id="login">
+            <label for="username">Username</label>
+            <input id="username" autocomplete="username" autocapitalize="none" required>
+            <label for="password">Password</label>
+            <input id="password" type="password" autocomplete="current-password" required>
+            <button class="btn" type="submit">Sign in</button>
+            <div class="login-error" id="login-error"></div>
+        </form>
+        <div id="content"></div>
+    </div>
+
+    <div class="footer">
+        Updates every hour. Prices include GST.<br>
+        <a href="https://konfhub.com/japan-habba-2027">Buy tickets on KonfHub</a>
+        &nbsp;&middot;&nbsp;
+    </div>
+
+    <script>
+        // Mirrors cron/vault.py: AES-256-GCM, key = PBKDF2-SHA256(username:password, salt, iter)
+        let creds = null;
+        const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+
+        async function decryptFile(path) {
+            const resp = await fetch(path + '?' + Date.now());
+            if (!resp.ok) throw new Error('missing');
+            const env = await resp.json();
+            const material = await crypto.subtle.importKey(
+                'raw', new TextEncoder().encode(creds.username.trim().toLowerCase() + ':' + creds.password),
+                'PBKDF2', false, ['deriveKey']);
+            const key = await crypto.subtle.deriveKey(
+                { name: 'PBKDF2', hash: 'SHA-256', salt: b64(env.salt), iterations: env.iter },
+                material, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+            return crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(env.iv) }, key, b64(env.ct));
+        }
+
+        async function downloadReport(btn) {
+            btn.disabled = true;
+            try {
+                const data = await decryptFile('comparison.xlsx.enc');
+                const url = URL.createObjectURL(new Blob([data], {
+                    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'comparison.xlsx';
+                a.click();
+                URL.revokeObjectURL(url);
+            } catch (e) {
+                btn.textContent = 'Report not available';
+            }
+            btn.disabled = false;
+        }
+
+        document.getElementById('login').addEventListener('submit', async (ev) => {
+            ev.preventDefault();
+            const form = ev.target;
+            const errEl = document.getElementById('login-error');
+            const btn = form.querySelector('button');
+            btn.disabled = true;
+            errEl.textContent = '';
+            creds = {
+                username: document.getElementById('username').value,
+                password: document.getElementById('password').value,
+            };
+            let data;
+            try {
+                data = JSON.parse(new TextDecoder().decode(await decryptFile('status.enc')));
+            } catch (e) {
+                creds = null;
+                errEl.textContent = e.message === 'missing'
+                    ? 'Status data not available yet.' : 'Wrong username or password.';
+                btn.disabled = false;
+                return;
+            }
+            form.remove();
+            render(data);
+            const dl = document.createElement('div');
+            dl.className = 'download';
+            dl.innerHTML = '<button class="btn" type="button">Download comparison.xlsx</button>';
+            dl.querySelector('button').addEventListener('click', e => downloadReport(e.target));
+            document.getElementById('content').before(dl);
+        });
+
+        function render(data) {
+            document.getElementById('updated').textContent = 'Last updated: ' + data.updated_at;
+
+            const totalSold = (data.tickets || []).reduce((s, t) => s + (t.sold || 0), 0);
+            const eventDate = new Date('2027-01-09T00:00:00+05:30');
+            const daysLeft = Math.max(0, Math.ceil((eventDate - new Date()) / 86400000));
+            document.getElementById('stat-sold').textContent = totalSold.toLocaleString('en-IN');
+            document.getElementById('stat-days').textContent = daysLeft;
+            document.getElementById('summary-bar').style.display = 'inline-flex';
+
+            const sections = {
+                'exhibition': { title: 'Exhibition (Japan Habba)', type: 'exhibition', tickets: [] },
+                'concert': { title: 'Concert (Japan Habba Live)', type: 'concert', tickets: [] },
+            };
+
+            for (const t of data.tickets) {
+                const n = t.name || '';
+                if (n.includes('Concert') || n.includes('Fan Club')) {
+                    sections.concert.tickets.push(t);
+                } else {
+                    sections.exhibition.tickets.push(t);
+                }
+            }
+
+            let html = '';
+            for (const [key, sec] of Object.entries(sections)) {
+                if (sec.tickets.length === 0) {
+                    html += '<div class="section">';
+                    html += '<div class="section-header ' + sec.type + '"><span class="dot ' + sec.type + '"></span>' + sec.title + '</div>';
+                    html += '<div class="empty-note">No tickets on sale yet.</div></div>';
+                    continue;
+                }
+
+                html += '<div class="section">';
+                html += '<div class="section-header ' + sec.type + '"><span class="dot ' + sec.type + '"></span>' + sec.title + '</div>';
+
+                for (const t of sec.tickets) {
+                    const pct = t.capacity > 0 ? Math.round(t.remaining / t.capacity * 100) : 0;
+                    let barClass = 'high', countClass = 'count-high';
+                    if (pct <= 25) { barClass = 'low'; countClass = 'count-low'; }
+                    else if (pct <= 50) { barClass = 'mid'; countClass = 'count-mid'; }
+
+                    const displayName = t.name
+                        .replace('Exhibition Day 1: ', 'Day 1 ')
+                        .replace('Exhibition Day 2: ', 'Day 2 ')
+                        .replace('Exhibition Both Days: ', 'Both Days ')
+                        .replace('Exhibition + Concert Day 1: ', 'Day 1 ')
+                        .replace('Exhibition + Concert Day 2: ', 'Day 2 ')
+                        .replace('Fan Club: 2-Day Exhibition + Concert', 'Fan Club 2-Day');
+
+                    let countText = t.remaining + ' left';
+                    if (t.remaining === 0) { countText = 'Sold Out'; countClass = 'count-out'; }
+
+                    html += '<div class="ticket-row">';
+                    html += '<span class="ticket-name">' + displayName + '</span>';
+                    html += '<span class="ticket-price">' + String.fromCharCode(8377) + t.price.toLocaleString('en-IN') + '</span>';
+                    html += '<span class="ticket-bar"><div class="bar-bg"><div class="bar-fill ' + barClass + '" style="width:' + pct + '%"></div></div></span>';
+                    html += '<span class="ticket-count ' + countClass + '">' + countText + '</span>';
+                    html += '</div>';
+                }
+                html += '</div>';
+            }
+
+            document.getElementById('content').innerHTML = html;
+        }
+
+    </script>
+</body>
+</html>
