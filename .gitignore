@@ -1,0 +1,8 @@
+.env
+.env.*
+__pycache__
+dump
+status.json
+history.json
+events.json
+comparison.xlsx
