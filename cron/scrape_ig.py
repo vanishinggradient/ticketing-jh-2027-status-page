@@ -196,16 +196,22 @@ def fetch_new_posts(
         return None
 
     new_posts = []
-    for post in profile.get_posts():
-        if since_shortcode and post.shortcode == since_shortcode:
-            break
-        new_posts.append({
-            "shortcode": post.shortcode,
-            "date_utc": post.date_utc,
-            "caption": (post.caption or "")[:500],
-        })
-        if len(new_posts) >= MAX_NEW_POSTS:
-            break
+    try:
+        for post in profile.get_posts():
+            if since_shortcode and post.shortcode == since_shortcode:
+                break
+            new_posts.append({
+                "shortcode": post.shortcode,
+                "date_utc": post.date_utc,
+                "caption": (post.caption or "")[:500],
+            })
+            if len(new_posts) >= MAX_NEW_POSTS:
+                break
+    except Exception as e:
+        # All or nothing: a partial page would move the "last shortcode"
+        # marker past posts we never saw.
+        log(f"Could not list posts: {e}")
+        return None
 
     return new_posts
 
