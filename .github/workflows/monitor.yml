@@ -72,3 +72,15 @@ jobs:
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v5
+
+      # Keyless: WIF impersonates a service account whose only access is
+      # Editor on the team sheet. Runs last so a failure can't lose data.
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SA_EMAIL }}
+
+      - name: Update Google Sheet
+        run: bash cron/quiet.sh python cron/update_sheet.py
+        env:
+          SHEET_ID: ${{ secrets.SHEET_ID }}
