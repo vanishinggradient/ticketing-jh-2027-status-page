@@ -45,14 +45,6 @@ jobs:
       - name: Generate comparison report
         run: bash cron/quiet.sh python cron/generate_report.py
 
-      - name: Scrape Instagram announcements
-        run: bash cron/quiet.sh python cron/scrape_ig.py
-        env:
-          INSTAGRAM_SESSION_B64: ${{ secrets.INSTAGRAM_SESSION_B64 }}
-          INSTAGRAM_USERNAME: ${{ secrets.INSTAGRAM_USERNAME }}
-          INSTAGRAM_PASSWORD: ${{ secrets.INSTAGRAM_PASSWORD }}
-        continue-on-error: true
-
       - name: Encrypt state
         run: python cron/vault.py encrypt
         env:
@@ -64,7 +56,8 @@ jobs:
           git config user.name "Ticket Monitor"
           git config user.email "ticketing@japanhabba.org"
           git add status.enc history.enc events.enc comparison.xlsx.enc
-          git diff --staged --quiet || (git commit -m "status: $(date -u +%Y-%m-%d_%H:%M)" && git push)
+          # events.enc is pushed by the local job (cron/local_events.sh); rebase over it
+          git diff --staged --quiet || (git commit -m "status: $(date -u +%Y-%m-%d_%H:%M)" && git pull --rebase -q && git push)
 
       # Only public files go to Pages; plaintext json and cron/ never get served
       - name: Stage site
