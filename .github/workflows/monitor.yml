@@ -34,7 +34,7 @@ jobs:
           PAGE_PASSWORD: ${{ secrets.PAGE_PASSWORD }}
 
       - name: Run monitor
-        run: python cron/monitor.py
+        run: bash cron/quiet.sh python cron/monitor.py
         env:
           KONFHUB_EVENT_ID: ${{ secrets.KONFHUB_EVENT_ID }}
           KONFHUB_REFRESH_TOKEN: ${{ secrets.KONFHUB_REFRESH_TOKEN }}
@@ -43,10 +43,10 @@ jobs:
           MONITOR_MODE: ${{ secrets.MONITOR_MODE }}
 
       - name: Generate comparison report
-        run: python cron/generate_report.py
+        run: bash cron/quiet.sh python cron/generate_report.py
 
       - name: Scrape Instagram announcements
-        run: python cron/scrape_ig.py
+        run: bash cron/quiet.sh python cron/scrape_ig.py
         env:
           INSTAGRAM_SESSION_B64: ${{ secrets.INSTAGRAM_SESSION_B64 }}
           INSTAGRAM_USERNAME: ${{ secrets.INSTAGRAM_USERNAME }}

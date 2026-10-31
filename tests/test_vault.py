@@ -54,3 +54,28 @@ def test_no_plaintext_data_tracked_in_git():
     ).stdout.split()
     leaked = [f for f in tracked if f in vault.DATA_FILES or f.endswith((".xlsx", ".md"))]
     assert leaked == []
+
+
+def _quiet(script: str):
+    return subprocess.run(
+        ["bash", str(REPO_ROOT / "cron" / "quiet.sh"), sys.executable, "-c", script],
+        capture_output=True, text=True,
+    )
+
+
+def test_quiet_hides_ticket_data():
+    r = _quiet("print('Total sold: 1720'); print('  Day 1: 89/300 sold, 211 left [hidden]')")
+    assert r.returncode == 0
+    assert r.stdout == ""
+
+
+def test_quiet_shows_errors_and_keeps_exit_code():
+    r = _quiet("print('GET error: 401'); print('Found 31 tickets'); raise SystemExit(3)")
+    assert r.returncode == 3
+    assert r.stdout.strip() == "GET error: 401"
+
+
+def test_quiet_masks_numbers_on_abort():
+    r = _quiet("print('  ABORT: price would change from 599 to 0')")
+    assert "599" not in r.stdout
+    assert "ABORT" in r.stdout
