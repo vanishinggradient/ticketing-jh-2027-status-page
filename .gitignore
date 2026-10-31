@@ -7,3 +7,5 @@ history.json
 events.json
 comparison.xlsx
 .venv
+report.json
+gha-creds-*.json
