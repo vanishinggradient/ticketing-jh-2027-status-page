@@ -13,10 +13,13 @@ jobs:
     permissions:
       contents: write
       issues: write
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.PAT_TOKEN }}
 
       - uses: actions/setup-python@v5
         with:
@@ -62,3 +65,17 @@ jobs:
           git config user.email "ticketing@japanhabba.org"
           git add status.enc history.enc events.enc comparison.xlsx.enc
           git diff --staged --quiet || (git commit -m "status: $(date -u +%Y-%m-%d_%H:%M)" && git push)
+
+      # Only public files go to Pages; plaintext json and cron/ never get served
+      - name: Stage site
+        run: |
+          mkdir _site
+          cp index.html robots.txt *.enc _site/
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
