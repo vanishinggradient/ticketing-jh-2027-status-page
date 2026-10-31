@@ -79,3 +79,43 @@ def test_quiet_masks_numbers_on_abort():
     r = _quiet("print('  ABORT: price would change from 599 to 0')")
     assert "599" not in r.stdout
     assert "ABORT" in r.stdout
+
+
+@pytest.fixture
+def tmp_repo(tmp_path, monkeypatch):
+    monkeypatch.setattr(vault, "REPO_ROOT", tmp_path)
+    (tmp_path / "status.json").write_bytes(b'{"a": 1}')
+    (tmp_path / "events.json").write_bytes(b"[]")
+    return tmp_path
+
+
+def test_encrypt_keeps_ciphertext_when_unchanged(tmp_repo):
+    vault.encrypt_files(["events.json"], "ops", "pw")
+    before = (tmp_repo / "events.enc").read_text()
+    vault.encrypt_files(["events.json"], "ops", "pw")
+    assert (tmp_repo / "events.enc").read_text() == before
+
+
+def test_encrypt_rewrites_when_changed(tmp_repo):
+    vault.encrypt_files(["events.json"], "ops", "pw")
+    before = (tmp_repo / "events.enc").read_text()
+    (tmp_repo / "events.json").write_bytes(b'[{"label": "x"}]')
+    vault.encrypt_files(["events.json"], "ops", "pw")
+    assert (tmp_repo / "events.enc").read_text() != before
+
+
+def test_encrypt_only_named_files(tmp_repo):
+    vault.encrypt_files(["events.json"], "ops", "pw")
+    assert (tmp_repo / "events.enc").exists()
+    assert not (tmp_repo / "status.enc").exists()
+
+
+def test_ig_label_and_classify():
+    import scrape_ig
+    caption = "\nIntroducing our fifth performer for Habba Live: Asaka, anime song singer!\n#japanhabba"
+    category = scrape_ig.classify(caption)
+    assert category == "SPEAKER/ARTIST"
+    label = scrape_ig.make_label(category, caption)
+    assert label.startswith("SPEAKER/ARTIST: Introducing our fifth performer")
+    assert label.endswith("…") and len(label) <= len("SPEAKER/ARTIST: ") + 51
+    assert scrape_ig.make_label("TICKETS", "") == "TICKETS"

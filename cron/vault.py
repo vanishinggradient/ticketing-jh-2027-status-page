@@ -6,8 +6,12 @@ public repo. index.html decrypts status.enc in the browser with the same
 scheme (WebCrypto).
 
 Usage:
-  python cron/vault.py decrypt   # *.enc -> plaintext (start of CI run)
-  python cron/vault.py encrypt   # plaintext -> *.enc (end of CI run)
+  python cron/vault.py decrypt [file ...]   # *.enc -> plaintext (start of CI run)
+  python cron/vault.py encrypt [file ...]   # plaintext -> *.enc (end of CI run)
+
+Files default to all of DATA_FILES. encrypt leaves an .enc untouched when its
+plaintext hasn't changed, so CI and the local events job (cron/local_events.sh)
+never rewrite each other's files and their pushes don't conflict.
 
 Scheme: AES-256-GCM, key = PBKDF2-HMAC-SHA256(username:password, salt, 600k).
 600k iterations is the OWASP Password Storage Cheat Sheet minimum.
@@ -24,6 +28,7 @@ import os
 import pathlib
 import sys
 
+from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 # ── Constants ─────────────────────────────────────────────────────────────────
@@ -69,27 +74,44 @@ def credentials() -> tuple[str, str]:
     return username, password
 
 
-def main():
-    if len(sys.argv) != 2 or sys.argv[1] not in ("encrypt", "decrypt"):
-        sys.exit("usage: python cron/vault.py encrypt|decrypt")
-    mode = sys.argv[1]
-    username, password = credentials()
-
-    for name in DATA_FILES:
+def encrypt_files(names: list[str], username: str, password: str):
+    for name in names:
         plain = REPO_ROOT / name
         enc = enc_path(name)
-        if mode == "encrypt":
-            if not plain.exists():
-                print(f"vault: skip {name} (missing)")
-                continue
-            enc.write_text(json.dumps(encrypt(plain.read_bytes(), username, password)))
-            print(f"vault: {name} -> {enc.name}")
-        else:
-            if not enc.exists():
-                print(f"vault: skip {enc.name} (missing)")
-                continue
-            plain.write_bytes(decrypt(json.loads(enc.read_text()), username, password))
-            print(f"vault: {enc.name} -> {name}")
+        if not plain.exists():
+            print(f"vault: skip {name} (missing)")
+            continue
+        data = plain.read_bytes()
+        if enc.exists():
+            try:
+                if decrypt(json.loads(enc.read_text()), username, password) == data:
+                    print(f"vault: {enc.name} unchanged")
+                    continue
+            except InvalidTag:
+                pass  # different credentials; overwrite
+        enc.write_text(json.dumps(encrypt(data, username, password)))
+        print(f"vault: {name} -> {enc.name}")
+
+
+def decrypt_files(names: list[str], username: str, password: str):
+    for name in names:
+        enc = enc_path(name)
+        if not enc.exists():
+            print(f"vault: skip {enc.name} (missing)")
+            continue
+        (REPO_ROOT / name).write_bytes(decrypt(json.loads(enc.read_text()), username, password))
+        print(f"vault: {enc.name} -> {name}")
+
+
+def main():
+    if len(sys.argv) < 2 or sys.argv[1] not in ("encrypt", "decrypt"):
+        sys.exit("usage: python cron/vault.py encrypt|decrypt [file ...]")
+    names = sys.argv[2:] or DATA_FILES
+    unknown = [n for n in names if n not in DATA_FILES]
+    if unknown:
+        sys.exit(f"vault: unknown file(s) {unknown}; expected some of {DATA_FILES}")
+    username, password = credentials()
+    (encrypt_files if sys.argv[1] == "encrypt" else decrypt_files)(names, username, password)
 
 
 if __name__ == "__main__":
