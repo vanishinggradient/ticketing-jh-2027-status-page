@@ -1,20 +1,18 @@
 """
 generate_report.py
 ==================
-Generates comparison.xlsx with JH 2027 vs JH 2026 sales pace analysis.
-Maintains history.json (one entry per day). Outputs comparison.xlsx.
+Builds the JH 2027 vs JH 2025 sales pace tables for the team Google Sheet.
+Maintains history.json (one entry per day). Outputs report.json, which
+cron/update_sheet.py writes to the sheet.
 
 Runs after monitor.py in the GitHub Actions workflow.
-No API calls. Reads status.json, writes history.json + comparison.xlsx.
+No API calls. Reads status.json + events.json, writes history.json + report.json.
+report.json is plaintext and gitignored; it never leaves the runner.
 """
 
 import json
 import pathlib
 from datetime import date, datetime, timezone, timedelta
-
-from openpyxl import Workbook
-from openpyxl.chart import LineChart, Reference
-from openpyxl.styles import Font, PatternFill, Alignment
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -22,9 +20,10 @@ EVENT_DATE = date(2027, 1, 9)
 IST = timezone(timedelta(hours=5, minutes=30))
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 
-# JH 2026 historical data from Nivi's spreadsheet.
+# JH 2025 historical data from Nivi's spreadsheet (Japan Habba is now biennial,
+# so JH 2025 is the previous edition).
 # Tuple: (days_to_jan9, cumulative_sold, date_label, note)
-JH_2026 = [
+JH_2025 = [
     (63,  0,     "Nov 7",  ""),
     (62,  1000,  "Nov 8",  "Early Bird Sold Out"),
     (59,  1200,  "Nov 11", ""),
@@ -62,7 +61,6 @@ PACE_MILESTONES = [
     ("Jan 9, 2027",  date(2027, 1, 9),   0,   18000),
 ]
 
-
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def today_ist() -> date:
@@ -97,27 +95,11 @@ def save_json(path: pathlib.Path, data):
         json.dump(data, f, indent=2)
 
 
-# ── Style helpers ─────────────────────────────────────────────────────────────
-
-def hdr_cell(ws, row: int, col: int, value, bg: str = "312E81"):
-    c = ws.cell(row=row, column=col, value=value)
-    c.font = Font(bold=True, color="FFFFFF", size=10)
-    c.fill = PatternFill("solid", fgColor=bg)
-    c.alignment = Alignment(horizontal="center", vertical="center")
-    return c
-
-
-def set_col_widths(ws, widths: list[tuple[str, float]]):
-    for col_letter, width in widths:
-        ws.column_dimensions[col_letter].width = width
-
-
-def rag_fill(pct: float) -> PatternFill:
-    if pct >= 0.9:
-        return PatternFill("solid", fgColor="D1FAE5")  # green
-    if pct >= 0.7:
-        return PatternFill("solid", fgColor="FEF3C7")  # amber
-    return PatternFill("solid", fgColor="FEE2E2")      # red
+def sold_between(totals: dict[int, int], from_dte: int, to_dte: int):
+    """Tickets sold from end of day from_dte to end of day to_dte ("" if either is missing)."""
+    if from_dte in totals and to_dte in totals:
+        return totals[to_dte] - totals[from_dte]
+    return ""
 
 
 def rag_label(pct: float) -> str:
@@ -128,260 +110,110 @@ def rag_label(pct: float) -> str:
     return "Off Track"
 
 
-# ── Sheet builders ────────────────────────────────────────────────────────────
+# ── Tab builders (plain values; formatting lives in the sheet) ────────────────
 
-def build_pace_chart_sheet(wb: Workbook, history: list, events: list):
-    """
-    Sheet 1: Pace Chart
-    Unified day-by-day table (D-100 to D+2), 3 series:
-      - JH 2026 (navy)
-      - JH 2027 (orange, from history.json)
-      - Target pace line (red dashed)
-    Column 5: Event annotations from events.json (purple italic).
-    Embedded LineChart.
-    """
-    ws = wb.active
-    ws.title = "Pace Chart"
-    ws.row_dimensions[1].height = 18
+def pace_chart_columns(history: list, events: list) -> dict[str, list]:
+    """Pace Chart: one row per day from D-100 to D+2, keyed by header text.
+    update_sheet.py matches these to the sheet's own headers, since the team's
+    tab has its own layout and chart."""
+    jh2025 = {d: s for d, s, _, _ in JH_2025}
+    jh2025_notes = {d: note for d, _, _, note in JH_2025 if note}
+    jh2027 = {e["days_to_event"]: e["total_sold"] for e in history}
 
-    for col, title in enumerate(
-        ["Days to Jan 9", "JH 2026 (sold)", "JH 2027 (sold)", "Target (pace)", "Event (JH 2027)", "Event (JH 2026)"], 1
-    ):
-        hdr_cell(ws, 1, col, title)
-
-    jh2026_lookup = {d: s for d, s, _, _ in JH_2026}
-    jh2026_notes = {d: note for d, _, _, note in JH_2026 if note}
-    jh2027_lookup = {e["days_to_event"]: e["total_sold"] for e in history}
-
-    # Build event lookup: days_to_event → label (from events.json)
     event_lookup: dict[int, str] = {}
     for ev in events:
         try:
-            ev_date = date.fromisoformat(ev["date"])
-            dte = (EVENT_DATE - ev_date).days
-            label = ev.get("label") or ev.get("category", "")
-            if dte not in event_lookup:
-                event_lookup[dte] = label
-            else:
-                event_lookup[dte] += f", {label}"
+            dte = (EVENT_DATE - date.fromisoformat(ev["date"])).days
         except (ValueError, KeyError):
-            pass
+            continue
+        label = ev.get("label") or ev.get("category", "")
+        event_lookup[dte] = f"{event_lookup[dte]}, {label}" if dte in event_lookup else label
 
-    # One row per day from D-100 down to D+2
-    all_days = list(range(100, -3, -1))
-    for i, d in enumerate(all_days, 2):
-        ws.cell(row=i, column=1, value=d).font = Font(size=9, color="6B7280")
-        if d in jh2026_lookup:
-            ws.cell(row=i, column=2, value=jh2026_lookup[d]).font = Font(size=9, color="1E3A5F")
-        if d in jh2027_lookup:
-            ws.cell(row=i, column=3, value=jh2027_lookup[d]).font = Font(size=9, bold=True, color="C2410C")
-        t = interpolate_target(d)
-        if t is not None:
-            ws.cell(row=i, column=4, value=t).font = Font(size=9, color="991B1B")
-        if d in event_lookup:
-            c = ws.cell(row=i, column=5, value=event_lookup[d])
-            c.font = Font(size=9, italic=True, color="7C3AED")
-        if d in jh2026_notes:
-            c = ws.cell(row=i, column=6, value=jh2026_notes[d])
-            c.font = Font(size=9, italic=True, color="1E3A5F")
-
-    set_col_widths(ws, [("A", 14), ("B", 16), ("C", 16), ("D", 16), ("E", 32), ("F", 32)])
-
-    n = len(all_days)
-
-    # Line chart
-    chart = LineChart()
-    chart.title = "Sales Pace: JH 2027 vs JH 2026"
-    chart.style = 10
-    chart.height = 14
-    chart.width = 24
-    chart.y_axis.title = "Tickets Sold"
-    chart.x_axis.title = "Days to Jan 9 (left = far, right = near)"
-
-    cats = Reference(ws, min_col=1, min_row=2, max_row=n + 1)
-
-    for col in (2, 3, 4):
-        data = Reference(ws, min_col=col, min_row=1, max_row=n + 1)
-        chart.add_data(data, titles_from_data=True)
-
-    chart.set_categories(cats)
-
-    # JH 2026: navy solid
-    chart.series[0].graphicalProperties.line.solidFill = "1E3A5F"
-    chart.series[0].graphicalProperties.line.width = 20000
-
-    # JH 2027: orange solid, thicker
-    chart.series[1].graphicalProperties.line.solidFill = "F97316"
-    chart.series[1].graphicalProperties.line.width = 25000
-
-    # Target: red, thinner
-    chart.series[2].graphicalProperties.line.solidFill = "DC2626"
-    chart.series[2].graphicalProperties.line.width = 14000
-    chart.series[2].graphicalProperties.line.dashDot = "dash"
-
-    ws.add_chart(chart, "F2")
+    days = list(range(100, -3, -1))
+    target = [interpolate_target(d) for d in days]
+    return {
+        "Days to Jan 9": days,
+        "JH 2025 (sold)": [jh2025.get(d, "") for d in days],
+        "JH 2027 (sold)": [jh2027.get(d, "") for d in days],
+        "Target (pace)": ["" if t is None else t for t in target],
+        "Event (JH 2027)": [event_lookup.get(d, "") for d in days],
+        "Event (JH 2025)": [jh2025_notes.get(d, "") for d in days],
+        # Daily sales make announcement spikes visible; the cumulative line hides them.
+        "JH 2027 (sold that day)": [sold_between(jh2027, d + 1, d) for d in days],
+    }
 
 
-def build_targets_sheet(wb: Workbook, history: list):
-    """
-    Sheet 2: Pace Targets
-    RAG status table: milestone, target, actual, delta, status.
-    """
-    ws = wb.create_sheet("Pace Targets")
-    ws.row_dimensions[1].height = 18
-
-    for col, h in enumerate(
-        ["Milestone", "Date", "Days to Event", "Target", "Actual", "Delta", "Status"], 1
-    ):
-        hdr_cell(ws, 1, col, h, bg="9D174D")
-
+def targets_rows(history: list) -> list[list]:
+    """Pace Targets: milestone, target, actual, delta, status."""
+    rows = [["Milestone", "Date", "Days to Event", "Target", "Actual", "Delta", "Status"]]
     today = today_ist()
     sold_by_date = {e["date"]: e["total_sold"] for e in history}
     current_sold = history[-1]["total_sold"] if history else 0
 
-    for row, (label, m_date, dte, target) in enumerate(PACE_MILESTONES, 2):
-        ws.cell(row=row, column=1, value=label).font = Font(bold=True, size=10)
-        ws.cell(row=row, column=2, value=m_date.strftime("%b %d, %Y")).font = Font(size=10)
-        ws.cell(row=row, column=3, value=dte).font = Font(size=10, color="6B7280")
-        ws.cell(row=row, column=4, value=target).font = Font(size=10)
-
+    for label, m_date, dte, target in PACE_MILESTONES:
+        row = [label, m_date.strftime("%b %d, %Y"), dte, target]
         if m_date > today:
-            # Not yet reached — show current total as "running total so far"
-            ws.cell(row=row, column=5, value=current_sold).font = Font(size=10, color="6B7280", italic=True)
-            ws.cell(row=row, column=6, value="").font = Font(size=10)
-            status_cell = ws.cell(row=row, column=7, value="Upcoming")
-            status_cell.font = Font(size=10, color="6B7280")
-            status_cell.fill = PatternFill("solid", fgColor="F3F4F6")
+            # Not yet reached: show running total so far
+            row += [current_sold, "", "Upcoming"]
         else:
-            # Past milestone — find nearest actual
             actual = sold_by_date.get(m_date.isoformat())
             if actual is None and history:
-                # Nearest by days_to_event
-                nearest = min(history, key=lambda e: abs(e["days_to_event"] - dte))
-                actual = nearest["total_sold"]
-
-            if actual is not None:
-                delta = actual - target
-                pct = actual / target if target > 0 else 0
-                ws.cell(row=row, column=5, value=actual).font = Font(bold=True, size=10)
-                delta_cell = ws.cell(row=row, column=6, value=delta)
-                delta_cell.font = Font(size=10, color="16A34A" if delta >= 0 else "DC2626", bold=True)
-                status_cell = ws.cell(row=row, column=7, value=rag_label(pct))
-                status_cell.font = Font(bold=True, size=10)
-                status_cell.fill = rag_fill(pct)
+                actual = min(history, key=lambda e: abs(e["days_to_event"] - dte))["total_sold"]
+            if actual is None:
+                row += ["No data", "", ""]
             else:
-                ws.cell(row=row, column=5, value="No data").font = Font(size=10, color="9CA3AF", italic=True)
+                row += [actual, actual - target, rag_label(actual / target if target else 0)]
+        rows.append(row)
+    return rows
 
-    set_col_widths(ws, [("A", 18), ("B", 16), ("C", 14), ("D", 12), ("E", 12), ("F", 10), ("G", 12)])
 
-
-def build_breakdown_sheet(wb: Workbook, status: dict):
-    """
-    Sheet 3: Live Breakdown
-    Current ticket state from status.json.
-    """
-    ws = wb.create_sheet("Live Breakdown")
-
-    ts = status.get("updated_at", "unknown")
-    ws.cell(row=1, column=1, value=f"Last updated: {ts}").font = Font(italic=True, color="6B7280", size=9)
-    ws.merge_cells("A1:F1")
-
-    for col, h in enumerate(["Ticket", "Price (Rs.)", "Sold", "Capacity", "Remaining", "% Full"], 1):
-        hdr_cell(ws, 2, col, h)
-
-    tickets = status.get("tickets", [])
-    for row, t in enumerate(tickets, 3):
+def breakdown_rows(status: dict) -> list[list]:
+    """Live Breakdown: current visible-ticket state from status.json."""
+    rows = [[f"Last updated: {status.get('updated_at', 'unknown')}"],
+            ["Ticket", "Price (Rs.)", "Sold", "Capacity", "Remaining", "% Full"]]
+    for t in status.get("tickets", []):
         cap = t.get("capacity", 0) or 0
         sold = t.get("sold", 0) or 0
-        remaining = t.get("remaining", 0) or 0
-        pct = round(sold / cap * 100, 1) if cap > 0 else 0
-        soldout = remaining == 0
-
-        row_font = Font(size=10, color="9CA3AF" if soldout else "1F2937")
-        for col, val in enumerate([t.get("name", ""), t.get("price", 0), sold, cap, remaining, pct], 1):
-            c = ws.cell(row=row, column=col, value=val)
-            c.font = row_font
-            if soldout:
-                c.fill = PatternFill("solid", fgColor="F9FAFB")
-
-        # % Full: colour-coded
-        pct_cell = ws.cell(row=row, column=6)
-        if not soldout:
-            if pct >= 80:
-                pct_cell.font = Font(size=10, bold=True, color="DC2626")
-            elif pct >= 50:
-                pct_cell.font = Font(size=10, color="D97706")
-            else:
-                pct_cell.font = Font(size=10, color="16A34A")
-
-    set_col_widths(ws, [("A", 42), ("B", 12), ("C", 10), ("D", 10), ("E", 12), ("F", 10)])
+        rows.append([t.get("name", ""), t.get("price", 0), sold, cap,
+                     t.get("remaining", 0) or 0, round(sold / cap * 100, 1) if cap else 0])
+    return rows
 
 
-def build_events_sheet(wb: Workbook, events: list):
-    """
-    Sheet 5: Events Log
-    All @japanhabba Instagram announcements with their sales context.
-    Populated from events.json.
-    """
-    ws = wb.create_sheet("Events Log")
-    ws.row_dimensions[1].height = 18
-
-    for col, h in enumerate(
-        ["Date", "Days to Event", "Category", "Label", "Instagram URL"], 1
-    ):
-        hdr_cell(ws, 1, col, h, bg="7C3AED")
-
-    today = today_ist()
-    for row, ev in enumerate(sorted(events, key=lambda x: x.get("date", "")), 2):
+def events_rows(events: list, history: list) -> list[list]:
+    """Events Log: @japanhabba Instagram announcements with the sales around each one."""
+    totals = {e["days_to_event"]: e["total_sold"] for e in history}
+    rows = [["Date", "Days to Event", "Category", "Label", "Sold that day",
+             "Sold next 3 days", "Instagram URL"]]
+    for ev in sorted(events, key=lambda x: x.get("date", "")):
         try:
-            ev_date = date.fromisoformat(ev["date"])
-            dte = (EVENT_DATE - ev_date).days
+            dte = (EVENT_DATE - date.fromisoformat(ev["date"])).days
+            that_day, next3 = sold_between(totals, dte + 1, dte), sold_between(totals, dte, dte - 3)
         except (ValueError, KeyError):
-            ev_date = None
-            dte = ""
-
-        ws.cell(row=row, column=1, value=ev.get("date", "")).font = Font(size=10)
-        ws.cell(row=row, column=2, value=dte).font = Font(size=10, color="6B7280")
-        ws.cell(row=row, column=3, value=ev.get("category", "")).font = Font(size=10, color="7C3AED", bold=True)
-        ws.cell(row=row, column=4, value=ev.get("label", "")).font = Font(size=10, italic=True)
-        url_cell = ws.cell(row=row, column=5, value=ev.get("url", ""))
-        url_cell.font = Font(size=10, color="2563EB")
-
-    set_col_widths(ws, [("A", 14), ("B", 14), ("C", 16), ("D", 32), ("E", 48)])
+            dte, that_day, next3 = "", "", ""
+        rows.append([ev.get("date", ""), dte, ev.get("category", ""), ev.get("label", ""),
+                     that_day, next3, ev.get("url", "")])
+    return rows
 
 
-def build_jh2026_raw_sheet(wb: Workbook):
-    """
-    Sheet 4: JH 2026 Raw
-    The original spreadsheet data for reference.
-    """
-    ws = wb.create_sheet("JH 2026 Raw")
-    ws.row_dimensions[1].height = 18
+def jh2025_raw_rows() -> list[list]:
+    """JH 2025 Raw: the original spreadsheet data for reference."""
+    rows = [["Date", "Days to Jan 9", "Cumulative Sold", "Daily Change", "Note"]]
+    prev = 0
+    for d, sold, date_label, note in JH_2025:
+        delta = sold - prev
+        prev = sold
+        rows.append([date_label, d, sold, f"+{delta:,}" if delta > 0 else "", note])
+    return rows
 
-    for col, h in enumerate(["Date", "Days to Jan 9", "Cumulative Sold", "Daily Change", "Note"], 1):
-        hdr_cell(ws, 1, col, h, bg="1E3A5F")
 
-    prev_sold = 0
-    for row, (d, sold, date_label, note) in enumerate(JH_2026, 2):
-        delta = sold - prev_sold
-        prev_sold = sold
-
-        ws.cell(row=row, column=1, value=date_label).font = Font(size=10)
-        ws.cell(row=row, column=2, value=d).font = Font(size=10, color="6B7280")
-        ws.cell(row=row, column=3, value=sold).font = Font(size=10, bold=True)
-
-        delta_cell = ws.cell(row=row, column=4, value=f"+{delta:,}" if delta > 0 else "")
-        delta_cell.font = Font(size=10, color="16A34A" if delta > 500 else "6B7280")
-
-        ws.cell(row=row, column=5, value=note).font = Font(size=10, italic=True, color="6B7280")
-
-    # Highlight big spikes
-    for row, (d, sold, _, note) in enumerate(JH_2026, 2):
-        if note:
-            for col in range(1, 6):
-                ws.cell(row=row, column=col).fill = PatternFill("solid", fgColor="FEF9C3")
-
-    set_col_widths(ws, [("A", 10), ("B", 14), ("C", 16), ("D", 14), ("E", 32)])
+def build_report(history: list, events: list, status: dict) -> dict:
+    return {"tabs": [
+        {"name": "Pace Chart", "mode": "columns", "columns": pace_chart_columns(history, events)},
+        {"name": "Pace Targets", "mode": "replace", "rows": targets_rows(history)},
+        {"name": "Live Breakdown", "mode": "replace", "rows": breakdown_rows(status)},
+        {"name": "JH 2025 Raw", "mode": "replace", "rows": jh2025_raw_rows()},
+        {"name": "Events Log", "mode": "replace", "rows": events_rows(events, history)},
+    ]}
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -389,7 +221,6 @@ def build_jh2026_raw_sheet(wb: Workbook):
 def main():
     print("generate_report.py starting...")
 
-    # Load status.json
     status = load_json(REPO_ROOT / "status.json", {"tickets": [], "updated_at": "unknown"})
     total_sold = sum(t.get("sold", 0) for t in status.get("tickets", []))
     dte = days_remaining()
@@ -414,21 +245,11 @@ def main():
     save_json(REPO_ROOT / "history.json", history)
     print(f"  History updated: {len(history)} entries")
 
-    # Load events.json (announcements from Instagram)
     events = load_json(REPO_ROOT / "events.json", [])
     print(f"  Events loaded: {len(events)} entries")
 
-    # Build workbook
-    wb = Workbook()
-    build_pace_chart_sheet(wb, history, events)
-    build_targets_sheet(wb, history)
-    build_breakdown_sheet(wb, status)
-    build_jh2026_raw_sheet(wb)
-    build_events_sheet(wb, events)
-
-    out = REPO_ROOT / "comparison.xlsx"
-    wb.save(out)
-    print(f"  Saved: {out}")
+    save_json(REPO_ROOT / "report.json", build_report(history, events, status))
+    print("  Saved: report.json")
     print("Done.")
 
 

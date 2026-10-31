@@ -104,7 +104,7 @@ def classify(caption: str) -> str | None:
 
 
 def make_label(category: str, caption: str) -> str:
-    """'SPEAKER/ARTIST: Introducing our fifth performer…' for the xlsx Events column."""
+    """'SPEAKER/ARTIST: Introducing our fifth performer…' for the sheet's Events column."""
     first = next((line.strip() for line in caption.splitlines() if line.strip()), "")
     if len(first) > 50:
         first = first[:50].rstrip() + "…"
