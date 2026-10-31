@@ -5,8 +5,17 @@ Fetches new @japanhabba Instagram posts and logs announcements to events.json.
 
 Runs in GitHub Actions after monitor.py. Non-blocking — exits 0 on any failure.
 
-Auth: INSTAGRAM_SESSION_B64 env var (base64-encoded instaloader session file).
+Auth, tried in order:
+  INSTAGRAM_SESSION_FILE : path to an instaloader session file (local runs)
+  INSTAGRAM_SESSION_B64  : base64-encoded session file
+  INSTAGRAM_USERNAME / INSTAGRAM_PASSWORD : password login, also used when a
+    loaded session turns out to be logged out. On success the session is saved
+    to INSTAGRAM_SESSION_FILE (if set) so later runs reuse it.
+IG_MAX_NEW_POSTS : posts to scan per run (default 10; raise to catch up).
 State: last logged shortcode is the most recent entry in events.json.
+
+Runs locally via cron/local_events.sh. Instagram rate-limits and logs out
+sessions used from cloud IPs, so this no longer runs in GitHub Actions.
 
 To generate the secret locally (run in ticketing-jh-2027):
   base64 -i konfhub/scripts/instagram-session-vanishinggradient | tr -d '\\n' | pbcopy
@@ -30,7 +39,8 @@ except ImportError:
     sys.exit(0)
 
 TARGET_ACCOUNT = "japanhabba"
-MAX_NEW_POSTS = 10
+MAX_NEW_POSTS = int(os.environ.get("IG_MAX_NEW_POSTS", "10"))
+SESSION_USER = os.environ.get("INSTAGRAM_USERNAME") or "vanishinggradient"
 
 IST = timezone(timedelta(hours=5, minutes=30))
 REPO_ROOT = pathlib.Path(__file__).parent.parent
@@ -92,6 +102,14 @@ def classify(caption: str) -> str | None:
     return None
 
 
+def make_label(category: str, caption: str) -> str:
+    """'SPEAKER/ARTIST: Introducing our fifth performer…' for the xlsx Events column."""
+    first = next((line.strip() for line in caption.splitlines() if line.strip()), "")
+    if len(first) > 50:
+        first = first[:50].rstrip() + "…"
+    return f"{category}: {first}" if first else category
+
+
 def get_last_shortcode(events: list) -> str | None:
     if not events:
         return None
@@ -111,6 +129,17 @@ def _make_loader() -> instaloader.Instaloader:
         post_metadata_txt_pattern="",
         max_connection_attempts=1,  # fail fast — no infinite retry loops in CI
     )
+
+
+def load_session_file(path: str) -> instaloader.Instaloader | None:
+    loader = _make_loader()
+    try:
+        loader.load_session_from_file(SESSION_USER, path)
+        log("Session file loaded.")
+        return loader
+    except Exception as e:
+        log(f"Session file load failed: {e}")
+        return None
 
 
 def load_session(session_b64: str) -> instaloader.Instaloader | None:
@@ -137,7 +166,8 @@ def load_session(session_b64: str) -> instaloader.Instaloader | None:
         return None
 
 
-def login_with_credentials(username: str, password: str) -> instaloader.Instaloader | None:
+def login_with_credentials(username: str, password: str,
+                           save_to: str = "") -> instaloader.Instaloader | None:
     """Fallback: password login when session is absent or stale."""
     if not username or not password:
         log("INSTAGRAM_USERNAME / INSTAGRAM_PASSWORD not set — cannot fall back")
@@ -146,6 +176,9 @@ def login_with_credentials(username: str, password: str) -> instaloader.Instaloa
     try:
         loader.login(username, password)
         log(f"Logged in as {username} via password.")
+        if save_to:
+            loader.save_session_to_file(save_to)
+            log("Session saved for next run.")
         return loader
     except Exception as e:
         log(f"Password login failed: {e}")
@@ -154,12 +187,13 @@ def login_with_credentials(username: str, password: str) -> instaloader.Instaloa
 
 def fetch_new_posts(
     loader: instaloader.Instaloader, since_shortcode: str | None
-) -> list[dict]:
+) -> list[dict] | None:
+    """New posts, newest first. None means the fetch failed (e.g. logged out)."""
     try:
         profile = instaloader.Profile.from_username(loader.context, TARGET_ACCOUNT)
     except Exception as e:
         log(f"Could not fetch @{TARGET_ACCOUNT}: {e}")
-        return []
+        return None
 
     new_posts = []
     for post in profile.get_posts():
@@ -177,6 +211,7 @@ def fetch_new_posts(
 
 
 def main():
+    session_file = os.environ.get("INSTAGRAM_SESSION_FILE", "")
     session_b64 = os.environ.get("INSTAGRAM_SESSION_B64", "")
     username = os.environ.get("INSTAGRAM_USERNAME", "")
     password = os.environ.get("INSTAGRAM_PASSWORD", "")
@@ -186,19 +221,31 @@ def main():
     log(f"Last logged shortcode: {since or 'none (first run)'}")
 
     loader = None
-    if session_b64:
+    if session_file and os.path.exists(session_file):
+        loader = load_session_file(session_file)
+    elif session_b64:
         loader = load_session(session_b64)
     else:
-        log("INSTAGRAM_SESSION_B64 not set — trying password fallback")
+        log("No saved session — trying password login")
 
+    used_password = False
     if loader is None:
-        loader = login_with_credentials(username, password)
+        loader = login_with_credentials(username, password, session_file)
+        used_password = True
 
     if loader is None:
         log("All auth methods failed — skipping")
         sys.exit(0)
 
     new_posts = fetch_new_posts(loader, since)
+    if new_posts is None and not used_password:
+        # Session loaded fine but Instagram has logged it out; log in again.
+        log("Saved session rejected — retrying with password login")
+        loader = login_with_credentials(username, password, session_file)
+        new_posts = fetch_new_posts(loader, since) if loader else None
+    if new_posts is None:
+        log("Fetch failed — skipping")
+        sys.exit(0)
     log(f"New posts since last check: {len(new_posts)}")
 
     # Dedup guard: never re-add a shortcode already in events.json.
@@ -221,7 +268,7 @@ def main():
             "date": date_ist.isoformat(),
             "shortcode": post["shortcode"],
             "category": category,
-            "label": category,  # user can edit this to a human-readable name
+            "label": make_label(category, post["caption"]),
             "caption_preview": post["caption"][:150].replace("\n", " "),
             "url": f"https://www.instagram.com/p/{post['shortcode']}/",
         }
