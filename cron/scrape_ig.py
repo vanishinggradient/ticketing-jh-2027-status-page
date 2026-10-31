@@ -43,6 +43,7 @@ MAX_NEW_POSTS = int(os.environ.get("IG_MAX_NEW_POSTS", "10"))
 SESSION_USER = os.environ.get("INSTAGRAM_USERNAME") or "vanishinggradient"
 
 IST = timezone(timedelta(hours=5, minutes=30))
+last_fetch_error = ""
 REPO_ROOT = pathlib.Path(__file__).parent.parent
 EVENTS_FILE = REPO_ROOT / "events.json"
 
@@ -189,10 +190,12 @@ def fetch_new_posts(
     loader: instaloader.Instaloader, since_shortcode: str | None
 ) -> list[dict] | None:
     """New posts, newest first. None means the fetch failed (e.g. logged out)."""
+    global last_fetch_error
     try:
         profile = instaloader.Profile.from_username(loader.context, TARGET_ACCOUNT)
     except Exception as e:
         log(f"Could not fetch @{TARGET_ACCOUNT}: {e}")
+        last_fetch_error = str(e)
         return None
 
     new_posts = []
@@ -211,6 +214,7 @@ def fetch_new_posts(
         # All or nothing: a partial page would move the "last shortcode"
         # marker past posts we never saw.
         log(f"Could not list posts: {e}")
+        last_fetch_error = str(e)
         return None
 
     return new_posts
@@ -244,8 +248,9 @@ def main():
         sys.exit(0)
 
     new_posts = fetch_new_posts(loader, since)
-    if new_posts is None and not used_password:
+    if new_posts is None and not used_password and "login" in last_fetch_error.lower():
         # Session loaded fine but Instagram has logged it out; log in again.
+        # Rate limits ("please wait") don't retry: another login makes them worse.
         log("Saved session rejected — retrying with password login")
         loader = login_with_credentials(username, password, session_file)
         new_posts = fetch_new_posts(loader, since) if loader else None
