@@ -48,7 +48,10 @@ def col_letter(col: int) -> str:
 
 
 def _norm(header) -> str:
-    return " ".join(str(header).split()).lower()
+    """Case, spacing and plural-insensitive, so 'Events (JH 2027)' still
+    matches 'Event (JH 2027)' after someone tidies a header."""
+    words = str(header).lower().split()
+    return " ".join(w[:-1] if len(w) > 3 and w.endswith("s") else w for w in words)
 
 
 def column_plan(tab: str, header_row: list, columns: dict[str, list],

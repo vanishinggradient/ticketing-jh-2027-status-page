@@ -131,3 +131,10 @@ def test_spike_nearby_in_events_log():
     rows = {d["range"]: d["values"] for d in data}["'Events Log'!C2:F3"]
     assert rows[0][0] == 86 and rows[0][3] == "yes"   # spike on day 85, 1 day after
     assert rows[1][3] == ""
+
+
+def test_column_plan_tolerates_plural_rename():
+    header_row = ["Days to Jan 9", "JH 2025 (sold)", "JH 2027 (sold)", "JH 2027 (sold that day)",
+                  "Target (pace)", "Spike", "Event (JH 2025)", "Events (JH 2027)"]
+    _, data = us.column_plan("Pace Chart", header_row, {"Event (JH 2027)": ["a"]}, 1000)
+    assert [d["range"] for d in data] == ["'Pace Chart'!H2:H2"]  # no new header appended
