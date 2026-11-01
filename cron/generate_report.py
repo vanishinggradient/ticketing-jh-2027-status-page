@@ -6,8 +6,10 @@ Maintains history.json (one entry per day). Outputs report.json, which
 cron/update_sheet.py writes to the sheet.
 
 Runs after monitor.py in the GitHub Actions workflow.
-No API calls. Reads status.json + events.json, writes history.json + report.json.
+No API calls. Reads status.json, writes history.json + report.json.
 report.json is plaintext and gitignored; it never leaves the runner.
+Event annotations come from the sheet's hand-edited Events Log tab, which
+update_sheet.py reads; this script only supplies the daily totals for them.
 """
 
 import json
@@ -112,22 +114,17 @@ def rag_label(pct: float) -> str:
 
 # ── Tab builders (plain values; formatting lives in the sheet) ────────────────
 
-def pace_chart_columns(history: list, events: list) -> dict[str, list]:
+def daily_totals(history: list) -> dict[int, int]:
+    return {e["days_to_event"]: e["total_sold"] for e in history}
+
+
+def pace_chart_columns(history: list) -> dict[str, list]:
     """Pace Chart: one row per day from D-100 to D+2, keyed by header text.
     update_sheet.py matches these to the sheet's own headers, since the team's
     tab has its own layout and chart."""
     jh2025 = {d: s for d, s, _, _ in JH_2025}
     jh2025_notes = {d: note for d, _, _, note in JH_2025 if note}
-    jh2027 = {e["days_to_event"]: e["total_sold"] for e in history}
-
-    event_lookup: dict[int, str] = {}
-    for ev in events:
-        try:
-            dte = (EVENT_DATE - date.fromisoformat(ev["date"])).days
-        except (ValueError, KeyError):
-            continue
-        label = ev.get("label") or ev.get("category", "")
-        event_lookup[dte] = f"{event_lookup[dte]}, {label}" if dte in event_lookup else label
+    jh2027 = daily_totals(history)
 
     days = list(range(100, -3, -1))
     target = [interpolate_target(d) for d in days]
@@ -136,7 +133,6 @@ def pace_chart_columns(history: list, events: list) -> dict[str, list]:
         "JH 2025 (sold)": [jh2025.get(d, "") for d in days],
         "JH 2027 (sold)": [jh2027.get(d, "") for d in days],
         "Target (pace)": ["" if t is None else t for t in target],
-        "Event (JH 2027)": [event_lookup.get(d, "") for d in days],
         "Event (JH 2025)": [jh2025_notes.get(d, "") for d in days],
         # Daily sales make announcement spikes visible; the cumulative line hides them.
         "JH 2027 (sold that day)": [sold_between(jh2027, d + 1, d) for d in days],
@@ -179,22 +175,6 @@ def breakdown_rows(status: dict) -> list[list]:
     return rows
 
 
-def events_rows(events: list, history: list) -> list[list]:
-    """Events Log: @japanhabba Instagram announcements with the sales around each one."""
-    totals = {e["days_to_event"]: e["total_sold"] for e in history}
-    rows = [["Date", "Days to Event", "Category", "Label", "Sold that day",
-             "Sold next 3 days", "Instagram URL"]]
-    for ev in sorted(events, key=lambda x: x.get("date", "")):
-        try:
-            dte = (EVENT_DATE - date.fromisoformat(ev["date"])).days
-            that_day, next3 = sold_between(totals, dte + 1, dte), sold_between(totals, dte, dte - 3)
-        except (ValueError, KeyError):
-            dte, that_day, next3 = "", "", ""
-        rows.append([ev.get("date", ""), dte, ev.get("category", ""), ev.get("label", ""),
-                     that_day, next3, ev.get("url", "")])
-    return rows
-
-
 def jh2025_raw_rows() -> list[list]:
     """JH 2025 Raw: the original spreadsheet data for reference."""
     rows = [["Date", "Days to Jan 9", "Cumulative Sold", "Daily Change", "Note"]]
@@ -206,13 +186,12 @@ def jh2025_raw_rows() -> list[list]:
     return rows
 
 
-def build_report(history: list, events: list, status: dict) -> dict:
-    return {"tabs": [
-        {"name": "Pace Chart", "mode": "columns", "columns": pace_chart_columns(history, events)},
+def build_report(history: list, status: dict) -> dict:
+    return {"totals": {str(k): v for k, v in daily_totals(history).items()}, "tabs": [
+        {"name": "Pace Chart", "mode": "columns", "columns": pace_chart_columns(history)},
         {"name": "Pace Targets", "mode": "replace", "rows": targets_rows(history)},
         {"name": "Live Breakdown", "mode": "replace", "rows": breakdown_rows(status)},
         {"name": "JH 2025 Raw", "mode": "replace", "rows": jh2025_raw_rows()},
-        {"name": "Events Log", "mode": "replace", "rows": events_rows(events, history)},
     ]}
 
 
@@ -245,10 +224,7 @@ def main():
     save_json(REPO_ROOT / "history.json", history)
     print(f"  History updated: {len(history)} entries")
 
-    events = load_json(REPO_ROOT / "events.json", [])
-    print(f"  Events loaded: {len(events)} entries")
-
-    save_json(REPO_ROOT / "report.json", build_report(history, events, status))
+    save_json(REPO_ROOT / "report.json", build_report(history, status))
     print("  Saved: report.json")
     print("Done.")
 

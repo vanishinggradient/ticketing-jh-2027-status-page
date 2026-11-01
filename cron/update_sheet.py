@@ -18,6 +18,9 @@ Tabs:
     the same text, so the team's own layout and chart keep working. Missing
     headers are added after the last used column.
   "replace" mode (everything else): the tab's values are cleared and rewritten.
+  Events Log is hand-edited by the team: columns A:B (Date, Label) are input
+    and never overwritten; C:E (days to event, sold that day, sold next 3 days)
+    are computed. Labels also land in Pace Chart's "Event (JH 2027)" column.
 Charts and formatting are never touched. Prints counts only, never values.
 """
 
@@ -26,12 +29,18 @@ import os
 import pathlib
 import sys
 
+from datetime import date
+
 import google.auth
 import gspread
 from gspread.utils import rowcol_to_a1
 
+from generate_report import EVENT_DATE, sold_between
+
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
+EVENTS_TAB = "Events Log"
+EVENTS_HEADER = ["Date", "Label", "Days to Event", "Sold that day", "Sold next 3 days"]
 
 
 def col_letter(col: int) -> str:
@@ -66,6 +75,57 @@ def replace_plan(tab: str, rows: list[list], max_rows: int, max_cols: int) -> tu
             [{"range": f"'{tab}'!A1", "values": rows}])
 
 
+def parse_event_date(value) -> date | None:
+    try:
+        return date.fromisoformat(str(value).strip()[:10])
+    except ValueError:
+        return None
+
+
+def events_input(rows: list[list]) -> list[list]:
+    """Date/Label rows (no header) from the Events Log tab. Converts the old
+    CI-written layout (Date | Days | Category | Label | URL) once."""
+    if not rows:
+        return []
+    header, body = rows[0], rows[1:]
+    if len(header) > 2 and str(header[2]).strip() == "Category":
+        return [[r[0] if r else "", r[3] if len(r) > 3 else ""] for r in body]
+    return [(r + ["", ""])[:2] for r in body]
+
+
+def events_plan(events: list[list], totals: dict[int, int], migrate: bool,
+                max_rows: int) -> tuple[list[str], list[dict]]:
+    """Header (+ A:B only when migrating) and computed C:E for the Events Log."""
+    t = f"'{EVENTS_TAB}'"
+    computed = []
+    for d, _label in events:
+        ev_date = parse_event_date(d)
+        if ev_date is None:
+            computed.append(["", "", ""])
+            continue
+        dte = (EVENT_DATE - ev_date).days
+        computed.append([dte, sold_between(totals, dte + 1, dte), sold_between(totals, dte, dte - 3)])
+    if migrate:
+        clears = [f"{t}!A1:G{max_rows}"]
+        data = [{"range": f"{t}!A1", "values": [EVENTS_HEADER] + [e + c for e, c in zip(events, computed)]}]
+    else:
+        clears = [f"{t}!C2:E{max_rows}"]
+        data = [{"range": f"{t}!C1:E1", "values": [EVENTS_HEADER[2:]]},
+                {"range": f"{t}!A1:B1", "values": [EVENTS_HEADER[:2]]}]
+        if computed:
+            data.append({"range": f"{t}!C2:E{len(computed) + 1}", "values": computed})
+    return clears, data
+
+
+def event_column(events: list[list], days: list[int]) -> list[str]:
+    by_day: dict[int, list[str]] = {}
+    for d, label in events:
+        ev_date = parse_event_date(d)
+        if ev_date and str(label).strip():
+            by_day.setdefault((EVENT_DATE - ev_date).days, []).append(str(label).strip())
+    return [", ".join(by_day.get(d, [])) for d in days]
+
+
 def main():
     sheet_id = os.environ.get("SHEET_ID", "")
     if not sheet_id:
@@ -75,8 +135,16 @@ def main():
     creds, _ = google.auth.default(scopes=SCOPES)
     sh = gspread.authorize(creds).open_by_key(sheet_id)
     worksheets = {ws.title: ws for ws in sh.worksheets()}
+    totals = {int(k): v for k, v in report["totals"].items()}
 
-    clears, data = [], []
+    events_ws = worksheets.get(EVENTS_TAB) or sh.add_worksheet(EVENTS_TAB, rows=200, cols=8)
+    raw = events_ws.get_values("A1:E")
+    migrate = bool(raw) and len(raw[0]) > 2 and str(raw[0][2]).strip() == "Category"
+    events = events_input(raw)
+    clears, data = events_plan(events, totals, migrate, events_ws.row_count)
+    pace = next(t for t in report["tabs"] if t["name"] == "Pace Chart")
+    pace["columns"]["Event (JH 2027)"] = event_column(events, pace["columns"]["Days to Jan 9"])
+
     for tab in report["tabs"]:
         name = tab["name"]
         rows_needed = len(tab.get("rows") or next(iter(tab.get("columns", {}).values()), [])) + 2
@@ -96,7 +164,9 @@ def main():
 
     sh.values_batch_clear(body={"ranges": clears})
     sh.values_batch_update(body={"valueInputOption": "RAW", "data": data})
-    print(f"update_sheet: wrote {len(data)} ranges across {len(report['tabs'])} tabs")
+    valid = sum(1 for d, _ in events if parse_event_date(d))
+    print(f"update_sheet: wrote {len(data)} ranges across {len(report['tabs']) + 1} tabs; "
+          f"{valid} events read, {len(events) - valid} rows skipped")
 
 
 if __name__ == "__main__":
