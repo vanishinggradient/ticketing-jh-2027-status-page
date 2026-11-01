@@ -55,7 +55,7 @@ jobs:
         run: |
           git config user.name "Ticket Monitor"
           git config user.email "ticketing@japanhabba.org"
-          git add status.enc history.enc events.enc comparison.xlsx.enc
+          git add status.enc history.enc events.enc
           # events.enc is pushed by the local job (cron/local_events.sh); rebase over it
           git diff --staged --quiet || (git commit -m "status: $(date -u +%Y-%m-%d_%H:%M)" && git pull --rebase -q && git push)
 

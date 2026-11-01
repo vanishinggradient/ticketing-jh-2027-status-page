@@ -35,7 +35,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 ITERATIONS = 600_000
-DATA_FILES = ["status.json", "history.json", "events.json", "comparison.xlsx"]
+DATA_FILES = ["status.json", "history.json", "events.json"]
 
 
 def derive_key(username: str, password: str, salt: bytes, iterations: int = ITERATIONS) -> bytes:
@@ -62,7 +62,7 @@ def decrypt(envelope: dict, username: str, password: str) -> bytes:
 
 
 def enc_path(name: str) -> pathlib.Path:
-    """status.json -> status.enc, comparison.xlsx -> comparison.xlsx.enc"""
+    """status.json -> status.enc"""
     return REPO_ROOT / (name.removesuffix(".json") + ".enc")
 
 

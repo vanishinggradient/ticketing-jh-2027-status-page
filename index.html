@@ -147,7 +147,6 @@
         .btn:hover { background: #1E1B4B; }
         .btn:disabled { opacity: 0.6; cursor: wait; }
         .login-error { color: #BE185D; font-size: 0.82rem; margin-top: 0.75rem; text-align: center; min-height: 1em; }
-        .download { text-align: center; margin-bottom: 1.25rem; }
 
         @media (max-width: 600px) {
             .ticket-bar { display: none; }
@@ -205,23 +204,6 @@
             return crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(env.iv) }, key, b64(env.ct));
         }
 
-        async function downloadReport(btn) {
-            btn.disabled = true;
-            try {
-                const data = await decryptFile('comparison.xlsx.enc');
-                const url = URL.createObjectURL(new Blob([data], {
-                    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'comparison.xlsx';
-                a.click();
-                URL.revokeObjectURL(url);
-            } catch (e) {
-                btn.textContent = 'Report not available';
-            }
-            btn.disabled = false;
-        }
-
         document.getElementById('login').addEventListener('submit', async (ev) => {
             ev.preventDefault();
             const form = ev.target;
@@ -245,11 +227,6 @@
             }
             form.remove();
             render(data);
-            const dl = document.createElement('div');
-            dl.className = 'download';
-            dl.innerHTML = '<button class="btn" type="button">Download comparison.xlsx</button>';
-            dl.querySelector('button').addEventListener('click', e => downloadReport(e.target));
-            document.getElementById('content').before(dl);
         });
 
         function render(data) {

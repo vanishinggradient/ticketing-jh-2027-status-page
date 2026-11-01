@@ -119,3 +119,8 @@ def test_ig_label_and_classify():
     assert label.startswith("SPEAKER/ARTIST: Introducing our fifth performer")
     assert label.endswith("…") and len(label) <= len("SPEAKER/ARTIST: ") + 51
     assert scrape_ig.make_label("TICKETS", "") == "TICKETS"
+
+
+def test_xlsx_retired():
+    assert "comparison.xlsx" not in vault.DATA_FILES
+    assert "comparison.xlsx" not in (REPO_ROOT / "index.html").read_text()
