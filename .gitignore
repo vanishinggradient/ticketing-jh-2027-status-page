@@ -4,7 +4,6 @@ __pycache__
 dump
 status.json
 history.json
-events.json
 .venv
 report.json
 gha-creds-*.json

@@ -10,8 +10,7 @@ Usage:
   python cron/vault.py encrypt [file ...]   # plaintext -> *.enc (end of CI run)
 
 Files default to all of DATA_FILES. encrypt leaves an .enc untouched when its
-plaintext hasn't changed, so CI and the local events job (cron/local_events.sh)
-never rewrite each other's files and their pushes don't conflict.
+plaintext hasn't changed, so unchanged data makes no commit noise.
 
 Scheme: AES-256-GCM, key = PBKDF2-HMAC-SHA256(username:password, salt, 600k).
 600k iterations is the OWASP Password Storage Cheat Sheet minimum.
@@ -35,7 +34,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 ITERATIONS = 600_000
-DATA_FILES = ["status.json", "history.json", "events.json"]
+DATA_FILES = ["status.json", "history.json"]
 
 
 def derive_key(username: str, password: str, salt: bytes, iterations: int = ITERATIONS) -> bytes:
