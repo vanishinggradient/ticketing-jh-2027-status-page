@@ -14,6 +14,7 @@ update_sheet.py reads; this script only supplies the daily totals for them.
 
 import json
 import pathlib
+import statistics
 from datetime import date, datetime, timezone, timedelta
 
 # ── Constants ─────────────────────────────────────────────────────────────────
@@ -63,6 +64,14 @@ PACE_MILESTONES = [
     ("Jan 9, 2027",  date(2027, 1, 9),   0,   18000),
 ]
 
+# A day is a spike when its sales are at least SPIKE_MULTIPLIER x the median of
+# the previous SPIKE_WINDOW days with data, and at least SPIKE_MIN tickets.
+# Median, not mean, so one past spike doesn't hide the next.
+SPIKE_MULTIPLIER = 2
+SPIKE_MIN = 20
+SPIKE_WINDOW = 7
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def today_ist() -> date:
@@ -104,6 +113,20 @@ def sold_between(totals: dict[int, int], from_dte: int, to_dte: int):
     return ""
 
 
+def spike_days(totals: dict[int, int]) -> set[int]:
+    """Days whose sales jump well above recent days. Days with a gap before
+    them have no daily number, so they can never be flagged."""
+    daily = {d: totals[d] - totals[d + 1] for d in totals if d + 1 in totals}
+    spikes = set()
+    for d in sorted(daily, reverse=True):  # far to near
+        prior = [daily[p] for p in sorted(daily, reverse=True) if p > d][-SPIKE_WINDOW:]
+        if len(prior) < 3:
+            continue
+        if daily[d] >= SPIKE_MIN and daily[d] >= SPIKE_MULTIPLIER * statistics.median(prior):
+            spikes.add(d)
+    return spikes
+
+
 def rag_label(pct: float) -> str:
     if pct >= 0.9:
         return "On Track"
@@ -125,6 +148,7 @@ def pace_chart_columns(history: list) -> dict[str, list]:
     jh2025 = {d: s for d, s, _, _ in JH_2025}
     jh2025_notes = {d: note for d, _, _, note in JH_2025 if note}
     jh2027 = daily_totals(history)
+    spikes = spike_days(jh2027)
 
     days = list(range(100, -3, -1))
     target = [interpolate_target(d) for d in days]
@@ -136,6 +160,7 @@ def pace_chart_columns(history: list) -> dict[str, list]:
         "Event (JH 2025)": [jh2025_notes.get(d, "") for d in days],
         # Daily sales make announcement spikes visible; the cumulative line hides them.
         "JH 2027 (sold that day)": [sold_between(jh2027, d + 1, d) for d in days],
+        "Spike": ["▲ spike" if d in spikes else "" for d in days],
     }
 
 
@@ -187,7 +212,9 @@ def jh2025_raw_rows() -> list[list]:
 
 
 def build_report(history: list, status: dict) -> dict:
-    return {"totals": {str(k): v for k, v in daily_totals(history).items()}, "tabs": [
+    totals = daily_totals(history)
+    return {"totals": {str(k): v for k, v in totals.items()},
+            "spikes": sorted(spike_days(totals)), "tabs": [
         {"name": "Pace Chart", "mode": "columns", "columns": pace_chart_columns(history)},
         {"name": "Pace Targets", "mode": "replace", "rows": targets_rows(history)},
         {"name": "Live Breakdown", "mode": "replace", "rows": breakdown_rows(status)},

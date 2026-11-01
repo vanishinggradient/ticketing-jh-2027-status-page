@@ -20,7 +20,7 @@ Tabs:
   "replace" mode (everything else): the tab's values are cleared and rewritten.
   Events Log is hand-edited by the team: columns A:B (Date, Label) are input
     and never overwritten; C:E (days to event, sold that day, sold next 3 days)
-    are computed. Labels also land in Pace Chart's "Event (JH 2027)" column.
+    are computed (plus F, "Spike nearby"). Labels also land in Pace Chart's "Event (JH 2027)" column.
 Charts and formatting are never touched. Prints counts only, never values.
 """
 
@@ -40,7 +40,7 @@ from generate_report import EVENT_DATE, sold_between
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 EVENTS_TAB = "Events Log"
-EVENTS_HEADER = ["Date", "Label", "Days to Event", "Sold that day", "Sold next 3 days"]
+EVENTS_HEADER = ["Date", "Label", "Days to Event", "Sold that day", "Sold next 3 days", "Spike nearby"]
 
 
 def col_letter(col: int) -> str:
@@ -94,26 +94,28 @@ def events_input(rows: list[list]) -> list[list]:
 
 
 def events_plan(events: list[list], totals: dict[int, int], migrate: bool,
-                max_rows: int) -> tuple[list[str], list[dict]]:
-    """Header (+ A:B only when migrating) and computed C:E for the Events Log."""
+                max_rows: int, spikes: set[int] = frozenset()) -> tuple[list[str], list[dict]]:
+    """Header (+ A:B only when migrating) and computed C:F for the Events Log.
+    "Spike nearby" means a spike on the event day or within the next 3 days."""
     t = f"'{EVENTS_TAB}'"
     computed = []
     for d, _label in events:
         ev_date = parse_event_date(d)
         if ev_date is None:
-            computed.append(["", "", ""])
+            computed.append(["", "", "", ""])
             continue
         dte = (EVENT_DATE - ev_date).days
-        computed.append([dte, sold_between(totals, dte + 1, dte), sold_between(totals, dte, dte - 3)])
+        near = "yes" if any(dte - k in spikes for k in range(4)) else ""
+        computed.append([dte, sold_between(totals, dte + 1, dte), sold_between(totals, dte, dte - 3), near])
     if migrate:
         clears = [f"{t}!A1:G{max_rows}"]
         data = [{"range": f"{t}!A1", "values": [EVENTS_HEADER] + [e + c for e, c in zip(events, computed)]}]
     else:
-        clears = [f"{t}!C2:E{max_rows}"]
-        data = [{"range": f"{t}!C1:E1", "values": [EVENTS_HEADER[2:]]},
+        clears = [f"{t}!C2:F{max_rows}"]
+        data = [{"range": f"{t}!C1:F1", "values": [EVENTS_HEADER[2:]]},
                 {"range": f"{t}!A1:B1", "values": [EVENTS_HEADER[:2]]}]
         if computed:
-            data.append({"range": f"{t}!C2:E{len(computed) + 1}", "values": computed})
+            data.append({"range": f"{t}!C2:F{len(computed) + 1}", "values": computed})
     return clears, data
 
 
@@ -141,7 +143,7 @@ def main():
     raw = events_ws.get_values("A1:E")
     migrate = bool(raw) and len(raw[0]) > 2 and str(raw[0][2]).strip() == "Category"
     events = events_input(raw)
-    clears, data = events_plan(events, totals, migrate, events_ws.row_count)
+    clears, data = events_plan(events, totals, migrate, events_ws.row_count, set(report.get("spikes", [])))
     pace = next(t for t in report["tabs"] if t["name"] == "Pace Chart")
     pace["columns"]["Event (JH 2027)"] = event_column(events, pace["columns"]["Days to Jan 9"])
 

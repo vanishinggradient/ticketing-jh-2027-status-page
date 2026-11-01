@@ -46,9 +46,9 @@ def test_events_input_migrates_old_ci_layout():
 def test_events_plan_writes_only_computed_columns():
     events = [["2026-10-02", "Reel"], ["not a date", "x"]]
     clears, data = us.events_plan(events, TOTALS, migrate=False, max_rows=200)
-    assert clears == ["'Events Log'!C2:E200"]
+    assert clears == ["'Events Log'!C2:F200"]
     ranges = {d["range"]: d["values"] for d in data}
-    assert ranges["'Events Log'!C2:E3"] == [[99, 138, 162], ["", "", ""]]  # 1114 - 952 over days 99 to 96
+    assert ranges["'Events Log'!C2:F3"] == [[99, 138, 162, ""], ["", "", "", ""]]  # 1114 - 952 over days 99 to 96
     assert not any(r.startswith("'Events Log'!A2") for r in ranges)  # input never overwritten
 
 
@@ -89,3 +89,45 @@ def test_replace_plan():
 def test_no_openpyxl_left():
     for path in (REPO_ROOT / "cron").glob("*.py"):
         assert "openpyxl" not in path.read_text(), path.name
+
+
+def _totals(daily: dict[int, int]) -> dict[int, int]:
+    """Cumulative totals from per-day sales, day 100 = 0 sold."""
+    totals, running = {100: 0}, 0
+    for d in sorted(daily, reverse=True):
+        running += daily[d]
+        totals[d] = running
+    return totals
+
+
+def test_flat_series_has_no_spikes():
+    assert gr.spike_days(_totals({d: 15 for d in range(99, 80, -1)})) == set()
+
+
+def test_jump_is_flagged():
+    daily = {d: 12 for d in range(99, 80, -1)}
+    daily[85] = 60
+    assert gr.spike_days(_totals(daily)) == {85}
+
+
+def test_small_jump_under_floor_not_flagged():
+    daily = {d: 3 for d in range(99, 80, -1)}
+    daily[85] = 15  # 5x the baseline but under 20 tickets
+    assert gr.spike_days(_totals(daily)) == set()
+
+
+def test_gap_never_flags():
+    totals = _totals({d: 12 for d in range(99, 80, -1)})
+    del totals[86], totals[87]  # migration-style gap; day 85 now absorbs 3 days
+    assert gr.spike_days(totals) == set()
+
+
+def test_spike_nearby_in_events_log():
+    daily = {d: 12 for d in range(99, 80, -1)}
+    daily[85] = 60
+    totals = _totals(daily)
+    _, data = us.events_plan([["2026-10-15", "PR post"], ["2026-10-01", "early"]], totals,
+                             migrate=False, max_rows=200, spikes=gr.spike_days(totals))
+    rows = {d["range"]: d["values"] for d in data}["'Events Log'!C2:F3"]
+    assert rows[0][0] == 86 and rows[0][3] == "yes"   # spike on day 85, 1 day after
+    assert rows[1][3] == ""
