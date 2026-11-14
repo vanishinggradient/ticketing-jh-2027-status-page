@@ -232,7 +232,8 @@
         function render(data) {
             document.getElementById('updated').textContent = 'Last updated: ' + data.updated_at;
 
-            const totalSold = (data.tickets || []).reduce((s, t) => s + (t.sold || 0), 0);
+            const totalSold = data.total_sold ??
+                (data.tickets || []).reduce((s, t) => s + (t.sold || 0), 0);
             const eventDate = new Date('2027-01-09T00:00:00+05:30');
             const daysLeft = Math.max(0, Math.ceil((eventDate - new Date()) / 86400000));
             document.getElementById('stat-sold').textContent = totalSold.toLocaleString('en-IN');

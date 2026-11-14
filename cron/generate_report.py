@@ -127,6 +127,26 @@ def spike_days(totals: dict[int, int]) -> set[int]:
     return spikes
 
 
+# Hidden tickets dropped out of the daily total until the all-ticket count
+# landed; rows from this date on were short by exactly their sales.
+HIDDEN_GAP_SINCE = "2026-11-10"
+DROP_ERROR = "error: total sold dropped vs previous day; check hidden or refunded tickets"
+
+
+def repair_hidden_gap(history: list, hidden_sold: int, since: str = HIDDEN_GAP_SINCE) -> int:
+    """One-time, idempotent: add hidden_sold to visible-only rows from `since`
+    on and mark every row basis=all. Returns how many rows were repaired."""
+    repaired = 0
+    for entry in history:
+        if "basis" in entry:
+            continue
+        if entry["date"] >= since:
+            entry["total_sold"] += hidden_sold
+            repaired += 1
+        entry["basis"] = "all"
+    return repaired
+
+
 def rag_label(pct: float) -> str:
     if pct >= 0.9:
         return "On Track"
@@ -228,7 +248,9 @@ def main():
     print("generate_report.py starting...")
 
     status = load_json(REPO_ROOT / "status.json", {"tickets": [], "updated_at": "unknown"})
-    total_sold = sum(t.get("sold", 0) for t in status.get("tickets", []))
+    total_sold = status.get("total_sold")
+    if total_sold is None:  # status.json from before the all-ticket count
+        total_sold = sum(t.get("sold", 0) for t in status.get("tickets", []))
     dte = days_remaining()
     today = today_ist().isoformat()
 
@@ -237,16 +259,25 @@ def main():
 
     # Update history.json
     history = load_json(REPO_ROOT / "history.json", [])
+    if "hidden_sold" in status:
+        repaired = repair_hidden_gap(history, status["hidden_sold"])
+        if repaired:
+            print(f"  Repaired {repaired} visible-only history rows")
     updated = False
     for entry in history:
         if entry["date"] == today:
             entry["total_sold"] = total_sold
             entry["days_to_event"] = dte
+            entry["basis"] = "all"
             updated = True
             break
     if not updated:
-        history.append({"date": today, "days_to_event": dte, "total_sold": total_sold})
+        history.append({"date": today, "days_to_event": dte, "total_sold": total_sold, "basis": "all"})
         history.sort(key=lambda x: x["date"])
+
+    prior = [e for e in history if e["date"] < today]
+    if prior and total_sold < prior[-1]["total_sold"]:
+        print(DROP_ERROR)
 
     save_json(REPO_ROOT / "history.json", history)
     print(f"  History updated: {len(history)} entries")

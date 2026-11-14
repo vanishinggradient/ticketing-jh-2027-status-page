@@ -138,3 +138,32 @@ def test_column_plan_tolerates_plural_rename():
                   "Target (pace)", "Spike", "Event (JH 2025)", "Events (JH 2027)"]
     _, data = us.column_plan("Pace Chart", header_row, {"Event (JH 2027)": ["a"]}, 1000)
     assert [d["range"] for d in data] == ["'Pace Chart'!H2:H2"]  # no new header appended
+
+
+def test_repair_hidden_gap_is_targeted_and_idempotent():
+    history = [{"date": "2026-11-09", "days_to_event": 61, "total_sold": 1928},
+               {"date": "2026-11-10", "days_to_event": 60, "total_sold": 1522},
+               {"date": "2026-11-11", "days_to_event": 59, "total_sold": 1533}]
+    assert gr.repair_hidden_gap(history, 412) == 2
+    assert [e["total_sold"] for e in history] == [1928, 1934, 1945]
+    assert all(e["basis"] == "all" for e in history)
+    assert gr.repair_hidden_gap(history, 412) == 0
+    assert [e["total_sold"] for e in history] == [1928, 1934, 1945]
+
+
+def test_status_json_counts_hidden_but_never_lists_them(monkeypatch):
+    for k in ("KONFHUB_EVENT_ID", "KONFHUB_REFRESH_TOKEN"):
+        monkeypatch.delenv(k, raising=False)
+    import monitor
+    tickets = [
+        {"ticket_name": "Exhibition Day 1: Phase 1", "tickets_sold": 300, "hidden_ticket": True},
+        {"ticket_name": "Exhibition Day 1: Phase 2", "tickets_sold": 20, "hidden_ticket": False},
+        {"ticket_name": "Meet & Greet", "tickets_sold": 50, "hidden_ticket": False},
+    ]
+    s = monitor.generate_status_json(tickets)
+    assert s["total_sold"] == 320 and s["hidden_sold"] == 300
+    assert [t["name"] for t in s["tickets"]] == ["Exhibition Day 1: Phase 2"]
+
+
+def test_drop_error_has_no_numbers():
+    assert not any(c.isdigit() for c in gr.DROP_ERROR)

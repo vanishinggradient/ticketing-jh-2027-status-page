@@ -358,17 +358,22 @@ def check_and_flip_phases(tickets: list) -> list[str]:
 # ── Status page ──────────────────────────────────────────────────────────────
 
 def generate_status_json(tickets: list) -> dict:
-    """JSON for the public status page HTML.
-    ONLY includes visible (non-hidden) tickets.
-    Hidden ticket data never leaves this output.
+    """JSON for the status page HTML (committed encrypted).
+    Ticket rows: visible (non-hidden) tickets only; hidden ticket names and
+    rows never leave this output. Aggregates cover every ticket except Meet &
+    Greet, so hiding a ticket that already has sales doesn't shrink the daily
+    total (it did on Nov 10, 2026: -406 on day 60).
     """
     now = datetime.now(IST).strftime("%Y-%m-%d %I:%M %p IST")
     items = []
+    total_sold = hidden_sold = 0
     for t in sorted(tickets, key=lambda x: x.get("ticket_order", 999)):
         name = t.get("ticket_name", "")
         if "Meet" in name and "Greet" in name:
             continue
+        total_sold += t.get("tickets_sold", 0) or 0
         if t.get("hidden_ticket", False):
+            hidden_sold += t.get("tickets_sold", 0) or 0
             continue
         items.append({
             "name": name,
@@ -377,7 +382,8 @@ def generate_status_json(tickets: list) -> dict:
             "sold": t.get("tickets_sold", 0),
             "remaining": t.get("remaining_count", 0),
         })
-    return {"updated_at": now, "tickets": items}
+    return {"updated_at": now, "tickets": items,
+            "total_sold": total_sold, "hidden_sold": hidden_sold}
 
 
 # ── Main ─────────────────────────────────────────────────────────────────────
