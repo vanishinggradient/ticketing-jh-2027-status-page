@@ -140,29 +140,32 @@ def test_column_plan_tolerates_plural_rename():
     assert [d["range"] for d in data] == ["'Pace Chart'!H2:H2"]  # no new header appended
 
 
-def test_repair_hidden_gap_is_targeted_and_idempotent():
-    history = [{"date": "2026-11-09", "days_to_event": 61, "total_sold": 1928},
-               {"date": "2026-11-10", "days_to_event": 60, "total_sold": 1522},
-               {"date": "2026-11-11", "days_to_event": 59, "total_sold": 1533}]
-    assert gr.repair_hidden_gap(history, 412) == 2
-    assert [e["total_sold"] for e in history] == [1928, 1934, 1945]
-    assert all(e["basis"] == "all" for e in history)
-    assert gr.repair_hidden_gap(history, 412) == 0
-    assert [e["total_sold"] for e in history] == [1928, 1934, 1945]
-
-
-def test_status_json_counts_hidden_but_never_lists_them(monkeypatch):
+def test_registrations_by_day_matches_dashboard_rules(monkeypatch):
     for k in ("KONFHUB_EVENT_ID", "KONFHUB_REFRESH_TOKEN"):
         monkeypatch.delenv(k, raising=False)
     import monitor
-    tickets = [
-        {"ticket_name": "Exhibition Day 1: Phase 1", "tickets_sold": 300, "hidden_ticket": True},
-        {"ticket_name": "Exhibition Day 1: Phase 2", "tickets_sold": 20, "hidden_ticket": False},
-        {"ticket_name": "Meet & Greet", "tickets_sold": 50, "hidden_ticket": False},
+    rows = [
+        {"ticket_name": "Exhibition Day 1: Phase 1", "registered_at": "2026-10-01 10:00:00", "refund_amount": "0.00"},
+        {"ticket_name": "Exhibition Day 1: Phase 1", "registered_at": "2026-10-01 19:00:00", "refund_amount": "0.00"},  # Oct 2 IST
+        {"ticket_name": "Meet & Greet: Guest 1", "registered_at": "2026-10-01 10:00:00", "refund_amount": "0.00"},
+        {"ticket_name": "Exhibition Day 2: Phase 1", "registered_at": "2026-10-02 10:00:00", "refund_amount": "599.00"},
     ]
+    assert monitor.registrations_by_day(rows) == {"2026-10-01": 1, "2026-10-02": 2}
+
+
+def test_status_json_never_lists_hidden(monkeypatch):
+    import monitor
+    tickets = [{"ticket_name": "Exhibition Day 1: Phase 1", "tickets_sold": 300, "hidden_ticket": True},
+               {"ticket_name": "Exhibition Day 1: Phase 2", "tickets_sold": 20, "hidden_ticket": False}]
     s = monitor.generate_status_json(tickets)
-    assert s["total_sold"] == 320 and s["hidden_sold"] == 300
     assert [t["name"] for t in s["tickets"]] == ["Exhibition Day 1: Phase 2"]
+
+
+def test_rebuild_history_fills_every_day():
+    from datetime import date
+    by_day = {"2026-09-30": 5, "2026-10-01": 814, "2026-10-03": 1027}
+    h = gr.rebuild_history(by_day, date(2026, 10, 4))
+    assert [(e["days_to_event"], e["total_sold"]) for e in h] == [(100, 814), (99, 814), (98, 1027), (97, 1027)]
 
 
 def test_drop_error_has_no_numbers():

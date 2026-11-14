@@ -372,20 +372,16 @@ def check_and_flip_phases(tickets: list) -> list[str]:
 def generate_status_json(tickets: list) -> dict:
     """JSON for the status page HTML (committed encrypted).
     Ticket rows: visible (non-hidden) tickets only; hidden ticket names and
-    rows never leave this output. Aggregates cover every ticket except Meet &
-    Greet, so hiding a ticket that already has sales doesn't shrink the daily
-    total (it did on Nov 10, 2026: -406 on day 60).
+    rows never leave this output. Totals come from registrations
+    (registrations_by_day), not from these rows.
     """
     now = datetime.now(IST).strftime("%Y-%m-%d %I:%M %p IST")
     items = []
-    total_sold = hidden_sold = 0
     for t in sorted(tickets, key=lambda x: x.get("ticket_order", 999)):
         name = t.get("ticket_name", "")
         if "Meet" in name and "Greet" in name:
             continue
-        total_sold += t.get("tickets_sold", 0) or 0
         if t.get("hidden_ticket", False):
-            hidden_sold += t.get("tickets_sold", 0) or 0
             continue
         items.append({
             "name": name,
@@ -394,8 +390,50 @@ def generate_status_json(tickets: list) -> dict:
             "sold": t.get("tickets_sold", 0),
             "remaining": t.get("remaining_count", 0),
         })
-    return {"updated_at": now, "tickets": items,
-            "total_sold": total_sold, "hidden_sold": hidden_sold}
+    return {"updated_at": now, "tickets": items}
+
+
+def registrations_by_day(rows: list) -> dict[str, int]:
+    """Cumulative paid registrations at the end of each IST day, the same
+    count as KonfHub's dashboard "Total Registrations". Meet & Greet and
+    refunded rows are excluded. registered_at is naive UTC (verified Nov 1:
+    matched the 1538 and 1720 totals exactly). Summing tickets_sold instead
+    broke when tickets were hidden (Nov 10) and over-counted hidden tickets."""
+    per_day: dict[str, int] = {}
+    for r in rows:
+        name = r.get("ticket_name") or ""
+        if "Meet" in name and "Greet" in name:
+            continue
+        try:
+            if float(r.get("refund_amount") or 0) > 0:
+                continue
+            ts = datetime.fromisoformat(str(r["registered_at"]).replace("Z", ""))
+        except (KeyError, TypeError, ValueError):
+            continue
+        day = ts.replace(tzinfo=timezone.utc).astimezone(IST).date().isoformat()
+        per_day[day] = per_day.get(day, 0) + 1
+    cumulative, running = {}, 0
+    for day in sorted(per_day):
+        running += per_day[day]
+        cumulative[day] = running
+    return cumulative
+
+
+def fetch_registrations() -> list | None:
+    """All attendee rows, read-only GET, paged. None on any failure."""
+    rows, seen, offset = [], set(), 0
+    for _ in range(300):
+        data = api_get(f"/event/{EVENT_ID}/attendees?limit=100&offset={offset}")
+        if data is None:
+            return None
+        batch = data.get("participant_details") or []
+        ids = {r.get("registration_id") or r.get("booking_id") for r in batch}
+        if not batch or ids <= seen:
+            return rows
+        seen |= ids
+        rows.extend(batch)
+        offset += len(batch)
+    return None
 
 
 # ── Main ─────────────────────────────────────────────────────────────────────
@@ -472,6 +510,13 @@ def main():
     repo_root = pathlib.Path(__file__).parent.parent
 
     status_json = generate_status_json(tickets)
+    registrations = fetch_registrations()
+    if registrations is None:
+        log("ERROR: could not fetch registrations; totals not updated this run")
+    else:
+        by_day = registrations_by_day(registrations)
+        status_json["registrations_by_day"] = by_day
+        status_json["total_sold"] = max(by_day.values(), default=0)
     with open(repo_root / "status.json", "w") as f:
         json.dump(status_json, f, indent=2)
 

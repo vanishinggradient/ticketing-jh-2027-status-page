@@ -127,24 +127,25 @@ def spike_days(totals: dict[int, int]) -> set[int]:
     return spikes
 
 
-# Hidden tickets dropped out of the daily total until the all-ticket count
-# landed; rows from this date on were short by exactly their sales.
-HIDDEN_GAP_SINCE = "2026-11-10"
-DROP_ERROR = "error: total sold dropped vs previous day; check hidden or refunded tickets"
+HISTORY_START = date(2026, 10, 1)   # day 100, first day of the pace chart
+DROP_ERROR = "error: total sold dropped vs previous day; check refunded tickets"
 
 
-def repair_hidden_gap(history: list, hidden_sold: int, since: str = HIDDEN_GAP_SINCE) -> int:
-    """One-time, idempotent: add hidden_sold to visible-only rows from `since`
-    on and mark every row basis=all. Returns how many rows were repaired."""
-    repaired = 0
-    for entry in history:
-        if "basis" in entry:
-            continue
-        if entry["date"] >= since:
-            entry["total_sold"] += hidden_sold
-            repaired += 1
-        entry["basis"] = "all"
-    return repaired
+def rebuild_history(by_day: dict[str, int], today: date) -> list:
+    """One row per day from HISTORY_START to today, each the cumulative
+    registrations at that day's end. Rebuilt from KonfHub every run, so a
+    missed run never leaves a gap and nothing needs backfilling."""
+    rows, running = [], 0
+    known = sorted(by_day.items())
+    i = 0
+    day = HISTORY_START
+    while day <= today:
+        while i < len(known) and known[i][0] <= day.isoformat():
+            running = known[i][1]
+            i += 1
+        rows.append({"date": day.isoformat(), "days_to_event": (EVENT_DATE - day).days, "total_sold": running})
+        day += timedelta(days=1)
+    return rows
 
 
 def rag_label(pct: float) -> str:
@@ -248,36 +249,14 @@ def main():
     print("generate_report.py starting...")
 
     status = load_json(REPO_ROOT / "status.json", {"tickets": [], "updated_at": "unknown"})
-    total_sold = status.get("total_sold")
-    if total_sold is None:  # status.json from before the all-ticket count
-        total_sold = sum(t.get("sold", 0) for t in status.get("tickets", []))
-    dte = days_remaining()
-    today = today_ist().isoformat()
-
-    print(f"  Total sold today: {total_sold}")
-    print(f"  Days to event: {dte}")
-
-    # Update history.json
     history = load_json(REPO_ROOT / "history.json", [])
-    if "hidden_sold" in status:
-        repaired = repair_hidden_gap(history, status["hidden_sold"])
-        if repaired:
-            print(f"  Repaired {repaired} visible-only history rows")
-    updated = False
-    for entry in history:
-        if entry["date"] == today:
-            entry["total_sold"] = total_sold
-            entry["days_to_event"] = dte
-            entry["basis"] = "all"
-            updated = True
-            break
-    if not updated:
-        history.append({"date": today, "days_to_event": dte, "total_sold": total_sold, "basis": "all"})
-        history.sort(key=lambda x: x["date"])
-
-    prior = [e for e in history if e["date"] < today]
-    if prior and total_sold < prior[-1]["total_sold"]:
-        print(DROP_ERROR)
+    by_day = status.get("registrations_by_day")
+    if by_day:
+        history = rebuild_history(by_day, today_ist())
+        if len(history) > 1 and history[-1]["total_sold"] < history[-2]["total_sold"]:
+            print(DROP_ERROR)
+    else:
+        print("error: no registration counts this run; history left unchanged")
 
     save_json(REPO_ROOT / "history.json", history)
     print(f"  History updated: {len(history)} entries")
