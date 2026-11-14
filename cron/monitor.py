@@ -63,13 +63,14 @@ READ_ONLY_FIELDS = {
     "ticket_id", "ticket_order", "tickets_sold", "time_availability",
 }
 
-# Phase order: when current sells out, activate next
-PHASE_ORDER_LIVE = [
-    ("Early Bird", "Phase 1"),
-    ("Phase 1", "Phase 2"),
-    ("Phase 2", "Phase 3"),
-    ("Phase 3", "Final Phase"),
-]
+# Phase order by ticket ID: when one sells out, activate the next.
+# IDs, not names: Phase 2 was renamed to plain "Exhibition Day 1" etc. (Nov 2026).
+# Order per day: Early Bird, Phase 1, Phase 2, Phase 3, Final Phase.
+PHASE_CHAINS_LIVE = {
+    "Day 1": [119461, 119462, 119463, 119464, 119465],
+    "Day 2": [119466, 119467, 119468, 119469, 119470],
+    "Both Days": [120028, 120029, 120030, 120031, 120032],
+}
 
 # Test mode phase order: only TEST-prefixed tickets
 PHASE_ORDER_TEST = [
@@ -329,13 +330,17 @@ def check_and_flip_phases(tickets: list) -> list[str]:
 
     # Live mode: real exhibition tickets
     log("MODE: LIVE (real tickets)")
-    for current_name, next_name in PHASE_ORDER_LIVE:
-        for day_label in ["Day 1", "Day 2", "Both Days"]:
-            current = find_ticket(tickets, f"{day_label}: {current_name}")
-            next_t = find_ticket(tickets, f"{day_label}: {next_name}")
+    by_id = {t.get("ticket_id"): t for t in tickets}
+    for day_label, chain in PHASE_CHAINS_LIVE.items():
+        for current_id, next_id in zip(chain, chain[1:]):
+            current = by_id.get(current_id)
+            next_t = by_id.get(next_id)
 
             if not current or not next_t:
+                log(f"  {day_label}: ticket {current_id if not current else next_id} not found")
                 continue
+            current_name = current.get("ticket_name", str(current_id))
+            next_name = next_t.get("ticket_name", str(next_id))
 
             remaining = current.get("remaining_count", 999)
             current_hidden = current.get("hidden_ticket", False)
@@ -344,13 +349,13 @@ def check_and_flip_phases(tickets: list) -> list[str]:
             sold_out = current.get("sold_out", False) or remaining == 0
 
             if sold_out and not current_hidden and next_hidden:
-                log(f"PHASE FLIP: {day_label} {current_name} sold out")
+                log(f"PHASE FLIP: {current_name} sold out")
 
                 if safe_put_visibility(current, hide=True):
-                    actions.append(f"Hidden: {day_label}: {current_name}")
+                    actions.append(f"Hidden: {current_name}")
 
                 if safe_put_visibility(next_t, hide=False):
-                    actions.append(f"Unhidden: {day_label}: {next_name}")
+                    actions.append(f"Unhidden: {next_name}")
 
     return actions
 
