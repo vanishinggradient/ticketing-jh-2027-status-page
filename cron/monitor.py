@@ -247,10 +247,17 @@ def create_github_issue(title: str, body: str):
     if not gh_token or not repo:
         log("Cannot create issue (no GITHUB_TOKEN)")
         return
+    headers = {"Authorization": f"Bearer {gh_token}", "Accept": "application/vnd.github+json"}
     try:
+        # Runs hourly: one open issue per problem, not one per run.
+        open_issues = requests.get(f"https://api.github.com/repos/{repo}/issues",
+                                   headers=headers, params={"state": "open"}, timeout=15).json()
+        if any(i.get("title") == title for i in open_issues if isinstance(i, dict)):
+            log("GitHub Issue already open")
+            return
         resp = requests.post(
             f"https://api.github.com/repos/{repo}/issues",
-            headers={"Authorization": f"Bearer {gh_token}", "Accept": "application/vnd.github+json"},
+            headers=headers,
             json={"title": title, "body": body},
             timeout=15,
         )
@@ -405,6 +412,15 @@ def main():
         TOKEN = refresh_token_via_cognito()
     if not TOKEN:
         log("ERROR: No KONFHUB_TOKEN and no valid refresh token. Cannot authenticate.")
+        create_github_issue(
+            "KonfHub login expired: monitor can't authenticate",
+            "The hourly monitor couldn't refresh its KonfHub login. Refresh tokens last "
+            "about 30 days, so this recurs roughly monthly.\n\n"
+            "1. In ticketing-jh-2027/konfhub/scripts run refresh-auth.py and log in\n"
+            "2. Copy the new refreshToken cookie from auth.json into the "
+            "KONFHUB_REFRESH_TOKEN secret (gh secret set)\n"
+            "3. Re-run the workflow, then close this issue\n"
+        )
         sys.exit(1)
 
     log(f"Monitor starting. Event: {EVENT_ID[:8]}...")

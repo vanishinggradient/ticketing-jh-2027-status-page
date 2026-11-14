@@ -167,3 +167,25 @@ def test_status_json_counts_hidden_but_never_lists_them(monkeypatch):
 
 def test_drop_error_has_no_numbers():
     assert not any(c.isdigit() for c in gr.DROP_ERROR)
+
+
+def test_issue_not_duplicated_when_already_open(monkeypatch):
+    import monitor
+    monkeypatch.setenv("GITHUB_TOKEN", "t")
+    monkeypatch.setenv("GITHUB_REPOSITORY", "o/r")
+    posted = []
+
+    class R:
+        def __init__(self, data):
+            self._d = data
+            self.status_code = 201
+
+        def json(self):
+            return self._d
+
+    monkeypatch.setattr(monitor.requests, "get", lambda *a, **k: R([{"title": "KonfHub login expired"}]))
+    monkeypatch.setattr(monitor.requests, "post", lambda *a, **k: posted.append(k) or R({}))
+    monitor.create_github_issue("KonfHub login expired", "body")
+    assert posted == []
+    monitor.create_github_issue("Something else", "body")
+    assert len(posted) == 1
