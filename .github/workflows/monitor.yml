@@ -8,23 +8,40 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Reads the KonfHub + page credentials and writes the encrypted state.
+  # Runs inside the protected `production` environment (main only), so a
+  # workflow dispatched from a branch cannot reach the secrets.
   monitor:
     runs-on: ubuntu-latest
+    environment:
+      name: production
     permissions:
       contents: write
       issues: write
-      pages: write
       id-token: write
-    environment:
-      name: github-pages
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
       - run: pip install -r cron/requirements.txt
+
+      # Encrypted state lives on the `state` branch so `main` can stay
+      # pull-request-only. Fall back to the copies on main on first run.
+      - name: Restore state
+        run: |
+          if git fetch origin state; then
+            for f in status.enc history.enc; do
+              git show FETCH_HEAD:$f > "$f" 2>/dev/null || git checkout HEAD -- "$f"
+            done
+            echo "Restored state from the state branch."
+          else
+            echo "No state branch yet, using the copies on main."
+          fi
 
       - name: Decrypt state
         run: python cron/vault.py decrypt
@@ -50,12 +67,26 @@ jobs:
           PAGE_USERNAME: ${{ secrets.PAGE_USERNAME }}
           PAGE_PASSWORD: ${{ secrets.PAGE_PASSWORD }}
 
-      - name: Commit status
+      # Pushes to `state`, never to `main`. `main` is protected by a ruleset
+      # that requires a pull request, so no workflow gets a bypass token.
+      - name: Save state
         run: |
           git config user.name "Ticket Monitor"
           git config user.email "ticketing@japanhabba.org"
-          git add status.enc history.enc
-          git diff --staged --quiet || (git commit -m "status: $(date -u +%Y-%m-%d_%H:%M)" && git pull --rebase -q && git push)
+          wt=/tmp/state
+          if git fetch origin state; then
+            git worktree add -q -B state "$wt" "$(git rev-parse FETCH_HEAD)"
+          else
+            git worktree add -q --orphan -B state "$wt"
+          fi
+          cp status.enc history.enc "$wt"/
+          git -C "$wt" add -A
+          if git -C "$wt" diff --staged --quiet; then
+            echo "State unchanged, nothing to commit."
+          else
+            git -C "$wt" commit -q -m "status: $(date -u +%Y-%m-%d_%H:%M)"
+            git -C "$wt" push -q origin state
+          fi
 
       # Only public files go to Pages; plaintext json and cron/ never get served
       - name: Stage site
@@ -66,10 +97,6 @@ jobs:
       - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
-
-      - name: Deploy Pages
-        id: deployment
-        uses: actions/deploy-pages@v5
 
       # Keyless: WIF impersonates a service account whose only access is
       # Editor on the team sheet. Runs last so a failure can't lose data.
@@ -82,3 +109,17 @@ jobs:
         run: bash cron/quiet.sh python cron/update_sheet.py
         env:
           SHEET_ID: ${{ secrets.SHEET_ID }}
+
+  deploy:
+    needs: monitor
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
