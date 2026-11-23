@@ -5,5 +5,6 @@ dump
 status.json
 history.json
 .venv
+.pytest_cache
 report.json
 gha-creds-*.json

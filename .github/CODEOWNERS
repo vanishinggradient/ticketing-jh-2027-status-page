@@ -1,0 +1,7 @@
+# Workflow and data-pipeline changes need the owner's review.
+/.github/ @vanishinggradient
+/cron/ @vanishinggradient
+
+# Ciphertext for the live status page.
+/status.enc @vanishinggradient
+/history.enc @vanishinggradient
